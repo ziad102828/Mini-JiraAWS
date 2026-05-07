@@ -63,6 +63,33 @@ router.get('/:taskId', async (req, res, next) => {
 });
 
 /**
+ * GET /api/tasks/:taskId/audit
+ * Get the audit log (status history) for a specific task.
+ */
+router.get('/:taskId/audit', async (req, res, next) => {
+  try {
+    const task = await taskService.getTaskById(req.params.taskId);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Enforce team isolation before returning logs
+    req.task = task;
+    validateTaskAccess(req, res, async () => {
+      try {
+        const auditLog = await auditService.getAuditLog(req.params.taskId);
+        res.json({ auditLog });
+      } catch (innerErr) {
+        next(innerErr);
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+/**
  * POST /api/tasks
  * Create a new task. Only managers can create tasks.
  * Body: { title, description, priority, deadline, assigneeId, teamId, projectId }

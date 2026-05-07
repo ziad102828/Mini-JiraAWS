@@ -7,6 +7,7 @@ import {
   GetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoConfig } from '../config/cognito.js';
+import * as userService from '../services/userService.js';
 
 const router = Router();
 const cognitoClient = new CognitoIdentityProviderClient({
@@ -161,13 +162,18 @@ router.get('/me', async (req, res, next) => {
       attributes[attr.Name] = attr.Value;
     }
 
-    res.json({
+    const userData = {
       userId: attributes.sub,
       email: attributes.email,
       name: attributes.name,
       role: attributes['custom:role'] || 'employee',
       teamId: attributes['custom:teamId'] || null,
-    });
+    };
+
+    // ⚠️ CRITICAL: Sync user to DynamoDB local cache so they appear in team queries
+    await userService.upsertUser(userData);
+
+    res.json(userData);
   } catch (err) {
     if (err.name === 'NotAuthorizedException') {
       return res.status(401).json({ error: 'Invalid or expired token.' });
