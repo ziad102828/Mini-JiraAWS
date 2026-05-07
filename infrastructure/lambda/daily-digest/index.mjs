@@ -24,9 +24,9 @@ import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
 const ddbClient = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ region: 'us-east-1' })
+  new DynamoDBClient({ region: 'eu-north-1' })
 );
-const snsClient = new SNSClient({ region: 'us-east-1' });
+const snsClient = new SNSClient({ region: 'eu-north-1' });
 
 const TASKS_TABLE = process.env.TASKS_TABLE || 'MiniJira_Tasks';
 const SNS_TOPIC_ARN = process.env.SNS_DIGEST_TOPIC_ARN;

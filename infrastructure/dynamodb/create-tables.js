@@ -11,7 +11,7 @@
  *
  * Prerequisites:
  *   - AWS CLI configured OR running on an EC2 instance with an IAM role
- *   - Region: us-east-1
+ *   - Region: eu-north-1
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -22,7 +22,7 @@ import {
   waitUntilTableExists,
 } from '@aws-sdk/client-dynamodb';
 
-const REGION = 'us-east-1';
+const REGION = 'eu-north-1';
 const client = new DynamoDBClient({ region: REGION });
 
 // ─── Table Definitions ──────────────────────────────────────
@@ -217,7 +217,7 @@ async function createTable(tableConfig) {
 async function main() {
   console.log('╔══════════════════════════════════════════════╗');
   console.log('║   Mini-Jira DynamoDB Table Setup             ║');
-  console.log('║   Region: us-east-1 | Billing: On-Demand    ║');
+  console.log('║   Region: eu-north-1 | Billing: On-Demand    ║');
   console.log('╚══════════════════════════════════════════════╝');
   console.log();
 

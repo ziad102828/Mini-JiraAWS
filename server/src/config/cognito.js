@@ -2,7 +2,7 @@
 // and by auth routes to proxy sign-up / sign-in calls
 
 export const cognitoConfig = {
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_REGION || 'eu-north-1',
   userPoolId: process.env.COGNITO_USER_POOL_ID,
   appClientId: process.env.COGNITO_APP_CLIENT_ID,
 

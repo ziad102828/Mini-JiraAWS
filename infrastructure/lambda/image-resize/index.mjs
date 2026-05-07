@@ -19,7 +19,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
-const s3 = new S3Client({ region: 'us-east-1' });
+const s3 = new S3Client({ region: 'eu-north-1' });
 const RESIZED_BUCKET = process.env.RESIZED_BUCKET || 'minijira-resized';
 const MAX_WIDTH = 300;
 const MAX_HEIGHT = 300;

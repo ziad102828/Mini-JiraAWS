@@ -23,9 +23,9 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
 
 const ddbClient = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ region: 'us-east-1' })
+  new DynamoDBClient({ region: 'eu-north-1' })
 );
-const cwClient = new CloudWatchClient({ region: 'us-east-1' });
+const cwClient = new CloudWatchClient({ region: 'eu-north-1' });
 
 const AUDIT_TABLE = process.env.AUDIT_TABLE || 'MiniJira_AuditLog';
 

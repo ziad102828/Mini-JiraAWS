@@ -24,7 +24,7 @@ import {
   DescribeUserPoolCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-const REGION = 'us-east-1';
+const REGION = 'eu-north-1';
 const client = new CognitoIdentityProviderClient({ region: REGION });
 
 async function createUserPool() {
@@ -170,7 +170,7 @@ async function createAppClient(userPoolId) {
 async function main() {
   console.log('╔══════════════════════════════════════════════════╗');
   console.log('║   Mini-Jira Cognito Setup                        ║');
-  console.log('║   Region: us-east-1                              ║');
+  console.log('║   Region: eu-north-1                              ║');
   console.log('╚══════════════════════════════════════════════════╝');
   console.log();
 
