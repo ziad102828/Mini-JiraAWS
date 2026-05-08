@@ -31,7 +31,6 @@ const tables = [
   // ┌─────────────────────────────────────────────────┐
   // │  1. USERS TABLE                                 │
   // │  PK: userId                                     │
-  // │  GSI: email-index, teamId-index                 │
   // └─────────────────────────────────────────────────┘
   {
     TableName: 'MiniJira_Users',
@@ -40,20 +39,6 @@ const tables = [
     ],
     AttributeDefinitions: [
       { AttributeName: 'userId', AttributeType: 'S' },
-      { AttributeName: 'email', AttributeType: 'S' },
-      { AttributeName: 'teamId', AttributeType: 'S' },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: 'email-index',
-        KeySchema: [{ AttributeName: 'email', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'ALL' },
-      },
-      {
-        IndexName: 'teamId-index',
-        KeySchema: [{ AttributeName: 'teamId', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'ALL' },
-      },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
@@ -138,21 +123,11 @@ const tables = [
     TableName: 'MiniJira_Comments',
     KeySchema: [
       { AttributeName: 'commentId', KeyType: 'HASH' },
+      { AttributeName: 'taskId', KeyType: 'RANGE' },
     ],
     AttributeDefinitions: [
       { AttributeName: 'commentId', AttributeType: 'S' },
       { AttributeName: 'taskId', AttributeType: 'S' },
-      { AttributeName: 'createdAt', AttributeType: 'S' },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: 'taskId-createdAt-index',
-        KeySchema: [
-          { AttributeName: 'taskId', KeyType: 'HASH' },
-          { AttributeName: 'createdAt', KeyType: 'RANGE' },
-        ],
-        Projection: { ProjectionType: 'ALL' },
-      },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
@@ -230,11 +205,11 @@ async function main() {
   console.log();
   console.log('Table Summary:');
   console.log('─────────────────────────────────────────────');
-  console.log('  MiniJira_Users      │ PK: userId     │ GSIs: email-index, teamId-index');
+  console.log('  MiniJira_Users      │ PK: userId     │ No GSI');
   console.log('  MiniJira_Teams      │ PK: teamId     │ No GSI');
   console.log('  MiniJira_Projects   │ PK: projectId  │ No GSI');
   console.log('  MiniJira_Tasks      │ PK: taskId     │ GSIs: teamId-createdAt, assigneeId-createdAt');
-  console.log('  MiniJira_Comments   │ PK: commentId  │ GSI: taskId-createdAt');
+  console.log('  MiniJira_Comments   │ PK: commentId  │ SK: taskId (composite key)');
   console.log('  MiniJira_AuditLog   │ PK: taskId     │ SK: timestamp (composite key)');
   console.log('─────────────────────────────────────────────');
 }

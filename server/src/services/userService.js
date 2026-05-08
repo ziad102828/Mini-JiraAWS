@@ -52,16 +52,11 @@ export async function getAllUsers() {
   return result.Items || [];
 }
 
-/**
- * Get all users belonging to a specific team.
- * Uses GSI: teamId-index
- */
 export async function getUsersByTeam(teamId) {
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: TABLE_NAMES.USERS,
-      IndexName: 'teamId-index',
-      KeyConditionExpression: 'teamId = :teamId',
+      FilterExpression: 'teamId = :teamId',
       ExpressionAttributeValues: {
         ':teamId': teamId,
       },
