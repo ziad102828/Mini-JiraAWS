@@ -21,14 +21,15 @@ export async function createTask(data) {
     description: data.description || '',
     status: 'To Do',
     priority: data.priority || 'medium',
-    deadline: data.deadline || null,
-    assigneeId: data.assigneeId || null,
     teamId: data.teamId,
-    imageKey: data.imageKey || null,
     createdBy: data.createdBy,
     createdAt: now,
     updatedAt: now,
   };
+
+  if (data.assigneeId) task.assigneeId = data.assigneeId;
+  if (data.deadline) task.deadline = data.deadline;
+  if (data.imageKey) task.imageKey = data.imageKey;
 
   await docClient.send(
     new PutCommand({

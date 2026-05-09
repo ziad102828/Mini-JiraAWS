@@ -19,24 +19,23 @@ export async function publishTaskAssignment(task) {
     return null;
   }
 
-  const message = {
-    eventType: 'TASK_ASSIGNED',
-    taskId: task.taskId,
-    title: task.title,
-    assigneeId: task.assigneeId,
-    teamId: task.teamId,
-    priority: task.priority,
-    deadline: task.deadline,
-    createdBy: task.createdBy,
-    timestamp: new Date().toISOString(),
-  };
+  const message = `
+You have been assigned a new task!
+
+Title: ${task.title}
+Priority: ${task.priority || 'Normal'}
+Team: ${task.teamId}
+Due Date: ${task.deadline || 'Not set'}
+
+Log in to Mini-Jira to view details.
+`;
 
   try {
     const result = await snsClient.send(
       new PublishCommand({
         TopicArn: SNS_TOPICS.TASK_ASSIGNMENT,
         Subject: `New Task Assigned: ${task.title}`,
-        Message: JSON.stringify(message),
+        Message: message,
         MessageAttributes: {
           eventType: {
             DataType: 'String',

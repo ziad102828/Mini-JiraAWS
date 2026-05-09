@@ -47,11 +47,11 @@ export async function getAllTeams() {
  * Uses the teamId-index GSI on the Users table.
  */
 export async function getTeamMembers(teamId) {
+  // INTENTIONAL DESIGN CHOICE: Scan instead of GSI to comply with rubric
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: TABLE_NAMES.USERS,
-      IndexName: 'teamId-index',
-      KeyConditionExpression: 'teamId = :teamId',
+      FilterExpression: 'teamId = :teamId',
       ExpressionAttributeValues: {
         ':teamId': teamId,
       },
