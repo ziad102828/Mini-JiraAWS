@@ -141,8 +141,8 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
           </div>
 
           {task.imageKey && imageUrl && (
-            <div className="mb-4 rounded-xl overflow-hidden border border-white/10 bg-black/40">
-              <img src={imageUrl} alt="Task Attachment" className="w-full max-h-32 object-contain" />
+            <div className="mb-4 rounded-xl overflow-hidden border border-white/5 bg-white/[0.02]">
+              <img src={imageUrl} alt="Task Attachment" className="w-full max-h-40 object-contain rounded-xl drop-shadow-2xl" />
             </div>
           )}
 
@@ -153,7 +153,14 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
           <div className="flex flex-wrap items-center gap-6 mt-4 text-sm text-gray-400">
             <div className="flex items-center">
               <User size={14} className="mr-1.5 text-blue-400" />
-              <span>Assigned: {task.assigneeName || task.assigneeId || 'Unassigned'}</span>
+              <span>
+                Assigned:{' '}
+                {task.assigneeName !== 'Unknown' && task.assigneeName
+                  ? task.assigneeName
+                  : task.assigneeId
+                  ? `User ${task.assigneeId.slice(0, 4)}`
+                  : 'Unassigned'}
+              </span>
             </div>
             {task.deadline && (
               <div className="flex items-center">
@@ -247,7 +254,9 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                         <span className="text-xs text-gray-500">{safeFormat(log.timestamp)}</span>
                       </div>
                       <p className="text-sm text-gray-400 mt-0.5">
-                        Moved from <span className="font-semibold text-gray-300">{statusLabel}</span> to{' '}
+                        Moved from <span className="font-semibold text-gray-300">
+                          {{ todo:'To Do', in_progress:'In Progress', in_review:'In Review', done:'Done' }[log.fromStatus] || log.fromStatus}
+                        </span> to{' '}
                         <span className="font-semibold text-gray-300">
                           {{ todo:'To Do', in_progress:'In Progress', in_review:'In Review', done:'Done' }[log.toStatus] || log.toStatus}
                         </span>
@@ -274,12 +283,12 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                     handlePostComment(e);
                   }
                 }}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none h-20"
+                className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none h-24 shadow-inner"
               />
               <button
                 type="submit"
                 disabled={!newComment.trim() || commentMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-500 text-white h-12 w-12 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mb-1"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white h-12 w-12 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mb-1 shadow-lg shadow-indigo-500/20"
               >
                 {commentMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>

@@ -67,7 +67,13 @@ export default function TaskCard({ task, onClick, index = 0 }) {
         )}
         <div className="flex items-center text-[10px] text-gray-500 gap-1 flex-1 min-w-0">
           <User size={11} className="text-gray-600 shrink-0" />
-          <span className="truncate">{task.assigneeName || 'Unassigned'}</span>
+          <span className="truncate">
+            {task.assigneeName !== 'Unknown' && task.assigneeName 
+              ? task.assigneeName 
+              : task.assigneeId 
+                ? `User ${task.assigneeId.slice(0, 4)}` 
+                : 'Unassigned'}
+          </span>
         </div>
         {task.commentCount > 0 && (
           <div className="flex items-center text-[10px] text-indigo-400/70 gap-1">
