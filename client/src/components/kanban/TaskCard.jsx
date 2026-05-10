@@ -1,29 +1,25 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, User, MessageSquare, GripVertical } from 'lucide-react';
+import { Calendar, User, MessageSquare, GripVertical, Image } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function TaskCard({ task, onClick }) {
+const PRIORITY_CLASSES = {
+  low:      'priority-low',
+  medium:   'priority-medium',
+  high:     'priority-high',
+  critical: 'priority-critical',
+};
+
+export default function TaskCard({ task, onClick, index = 0 }) {
   const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
+    attributes, listeners, setNodeRef, transform, transition, isDragging
   } = useSortable({ id: task.taskId });
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
-  };
-
-  const priorityColors = {
-    low: 'bg-green-500/10 text-green-500',
-    medium: 'bg-yellow-500/10 text-yellow-500',
-    high: 'bg-red-500/10 text-red-500',
-    critical: 'bg-purple-500/10 text-purple-500'
+    opacity: isDragging ? 0.2 : 1,
+    zIndex: isDragging ? 50 : undefined,
   };
 
   return (
@@ -32,44 +28,50 @@ export default function TaskCard({ task, onClick }) {
       style={style}
       {...attributes}
       onClick={() => { if (!isDragging && onClick) onClick(task); }}
-      className="bg-white/5 border border-white/10 p-4 rounded-xl mb-3 hover:border-white/20 transition-colors group cursor-pointer relative"
+      className="task-card p-4 mb-2.5 cursor-pointer animate-card-enter"
+      // Stagger each card's entrance
+      data-delay={index * 60}
     >
-      {/* Drag Handle - only this triggers drag */}
+      {/* Drag Handle */}
       <div
         {...listeners}
         onClick={e => e.stopPropagation()}
-        className="absolute top-3 right-3 p-1 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-3.5 right-3.5 p-1 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <GripVertical size={14} />
+        <GripVertical size={13} />
       </div>
 
-      <div className="flex justify-between items-start mb-3 pr-5">
-        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
+      {/* Priority + ID Row */}
+      <div className="flex justify-between items-center mb-3 pr-4">
+        <span className={`${PRIORITY_CLASSES[task.priority] || PRIORITY_CLASSES.medium} text-[9px] uppercase font-black px-2.5 py-0.5 rounded-full tracking-widest`}>
           {task.priority}
         </span>
-        <span className="text-[10px] text-gray-500 font-mono">#{task.taskId.slice(-4)}</span>
+        <div className="flex items-center gap-1.5">
+          {task.imageKey && <Image size={11} className="text-indigo-400/60" />}
+          <span className="text-[9px] text-gray-600 font-mono">#{task.taskId.slice(-4)}</span>
+        </div>
       </div>
-      
-      <h4 className="text-sm font-medium text-gray-100 mb-3 group-hover:text-blue-400 transition-colors line-clamp-2">
+
+      {/* Title */}
+      <h4 className="text-sm font-semibold text-gray-200 mb-3 line-clamp-2 group-hover:text-indigo-300 transition-colors leading-snug">
         {task.title}
       </h4>
 
-      <div className="flex flex-wrap gap-3 mt-auto">
+      {/* Footer */}
+      <div className="flex items-center gap-3 flex-wrap">
         {task.deadline && (
-          <div className="flex items-center text-[11px] text-gray-400">
-            <Calendar size={12} className="mr-1" />
+          <div className="flex items-center text-[10px] text-gray-500 gap-1">
+            <Calendar size={11} className="text-gray-600" />
             {format(new Date(task.deadline), 'MMM dd')}
           </div>
         )}
-        
-        <div className="flex items-center text-[11px] text-gray-400">
-          <User size={12} className="mr-1" />
-          <span className="truncate max-w-[80px]">{task.assigneeName || task.assigneeId || 'Unassigned'}</span>
+        <div className="flex items-center text-[10px] text-gray-500 gap-1 flex-1 min-w-0">
+          <User size={11} className="text-gray-600 shrink-0" />
+          <span className="truncate">{task.assigneeName || 'Unassigned'}</span>
         </div>
-
         {task.commentCount > 0 && (
-          <div className="flex items-center text-[11px] text-blue-400">
-            <MessageSquare size={12} className="mr-1" />
+          <div className="flex items-center text-[10px] text-indigo-400/70 gap-1">
+            <MessageSquare size={11} />
             {task.commentCount}
           </div>
         )}

@@ -104,9 +104,13 @@ export default function TasksPage() {
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="h-[60vh] flex flex-col items-center justify-center">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-400 font-medium">Loading your board...</p>
+        <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl logo-badge flex items-center justify-center animate-pulse-glow">
+              <Loader2 className="w-7 h-7 text-white animate-spin" />
+            </div>
+          </div>
+          <p className="text-gray-500 font-medium text-sm tracking-widest uppercase">Loading board...</p>
         </div>
       </MainLayout>
     );
@@ -116,10 +120,10 @@ export default function TasksPage() {
     <MainLayout>
       <div className="flex flex-col h-[calc(100vh-160px)]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 animate-fade-up">
           <div>
-            <h1 className="text-3xl font-bold text-white">Project Board</h1>
-            <p className="text-gray-400 mt-1">Manage and track your team tasks</p>
+            <h1 className="text-3xl font-black text-white">Project Board</h1>
+            <p className="text-gray-500 text-sm mt-1">Manage and track your team's tasks</p>
           </div>
           
           <div className="flex gap-3">
@@ -142,9 +146,10 @@ export default function TasksPage() {
             {user?.role === 'manager' && (
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center px-4 py-2 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 text-sm font-semibold"
+                className="btn-glow flex items-center px-4 py-2.5 rounded-xl text-white text-sm font-bold gap-2"
+                style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}
               >
-                <Plus size={16} className="mr-2" /> New Task
+                <Plus size={16} /> New Task
               </button>
             )}
           </div>
