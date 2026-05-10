@@ -60,12 +60,18 @@ export const api = {
     request(`/api/tasks/${taskId}/audit`, {}, token),
 
   // --- Teams ---
-  getTeams: (token) => 
+  getTeams: (token) =>
     request('/api/teams', {}, token),
-  
-  getTeamMembers: (token, teamId) => 
+
+  createTeam: (token, name) =>
+    request('/api/teams', { method: 'POST', body: JSON.stringify({ name }) }, token),
+
+  deleteTeam: (token, teamId) =>
+    request(`/api/teams/${teamId}`, { method: 'DELETE' }, token),
+
+  getTeamMembers: (token, teamId) =>
     request(`/api/teams/${teamId}/members`, {}, token),
-  
-  getUsers: (token) => 
+
+  getUsers: (token) =>
     request('/api/users', {}, token),
 };

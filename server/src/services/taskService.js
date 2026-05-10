@@ -19,7 +19,7 @@ export async function createTask(data) {
     projectId: data.projectId,
     title: data.title,
     description: data.description || '',
-    status: 'To Do',
+    status: data.status || 'todo',
     priority: data.priority || 'medium',
     teamId: data.teamId,
     createdBy: data.createdBy,

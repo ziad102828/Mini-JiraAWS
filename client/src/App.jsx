@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
+import TeamsPage from './pages/TeamsPage';
+import ProjectsPage from './pages/ProjectsPage';
 
 // Configure TanStack Query
 const queryClient = new QueryClient({
@@ -78,6 +80,15 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Manager-only Route Wrapper
+function ManagerRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'manager') return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -88,15 +99,19 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
 
               <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
+                <ProtectedRoute><DashboardPage /></ProtectedRoute>
               } />
 
               <Route path="/tasks" element={
-                <ProtectedRoute>
-                  <TasksPage />
-                </ProtectedRoute>
+                <ProtectedRoute><TasksPage /></ProtectedRoute>
+              } />
+
+              <Route path="/teams" element={
+                <ManagerRoute><TeamsPage /></ManagerRoute>
+              } />
+
+              <Route path="/projects" element={
+                <ProtectedRoute><ProjectsPage /></ProtectedRoute>
               } />
 
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

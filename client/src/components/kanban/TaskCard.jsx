@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, User, MessageSquare } from 'lucide-react';
+import { Calendar, User, MessageSquare, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function TaskCard({ task, onClick }) {
@@ -31,13 +31,19 @@ export default function TaskCard({ task, onClick }) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      onClick={() => {
-        if (!isDragging && onClick) onClick(task);
-      }}
-      className="bg-white/5 border border-white/10 p-4 rounded-xl mb-3 cursor-grab active:cursor-grabbing hover:border-white/20 transition-colors group"
+      onClick={() => { if (!isDragging && onClick) onClick(task); }}
+      className="bg-white/5 border border-white/10 p-4 rounded-xl mb-3 hover:border-white/20 transition-colors group cursor-pointer relative"
     >
-      <div className="flex justify-between items-start mb-3">
+      {/* Drag Handle - only this triggers drag */}
+      <div
+        {...listeners}
+        onClick={e => e.stopPropagation()}
+        className="absolute top-3 right-3 p-1 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical size={14} />
+      </div>
+
+      <div className="flex justify-between items-start mb-3 pr-5">
         <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
           {task.priority}
         </span>
@@ -58,7 +64,7 @@ export default function TaskCard({ task, onClick }) {
         
         <div className="flex items-center text-[11px] text-gray-400">
           <User size={12} className="mr-1" />
-          <span className="truncate max-w-[80px]">{task.assigneeName || 'Unassigned'}</span>
+          <span className="truncate max-w-[80px]">{task.assigneeName || task.assigneeId || 'Unassigned'}</span>
         </div>
 
         {task.commentCount > 0 && (
