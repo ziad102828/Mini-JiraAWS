@@ -8,30 +8,41 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in on mount
+  // On app boot — check if a valid Cognito session already exists
   useEffect(() => {
     checkUser();
   }, []);
 
   async function checkUser() {
     try {
+      // Step 1: Does Amplify have any cached session at all?
       await getCurrentUser();
-      const session = await fetchAuthSession();
+
+      // Step 2: Fetch fresh tokens (forceRefresh avoids stale cached tokens)
+      const session = await fetchAuthSession({ forceRefresh: true });
+
+      if (!session.tokens?.idToken) {
+        throw new Error('No valid session tokens found');
+      }
+
       const idToken = session.tokens.idToken.toString();
-      
-      // Fetch full user profile from our Node.js backend (proxied to localhost:5000)
-      const res = await fetch(`/api/auth/me`, {
-        headers: { Authorization: `Bearer ${idToken}` }
+
+      // Step 3: Validate the token with our backend
+      const res = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
-      
-      if (!res.ok) throw new Error('Failed to fetch user profile');
-      
+
+      if (!res.ok) {
+        // Backend rejected the token — clear Amplify session too to stay in sync
+        await signOut();
+        throw new Error('Session expired or invalid');
+      }
+
       const data = await res.json();
-      
       setUser(data.user);
       setToken(idToken);
     } catch (err) {
-      console.log('User not authenticated:', err.message);
+      console.log('No active session:', err.message);
       setUser(null);
       setToken(null);
     } finally {
@@ -40,33 +51,48 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    // Force sign out first in case another session is stuck in the browser cache
+    // If Amplify has a stale session, clear it before signing in as someone else
     try {
-      await signOut();
+      const existing = await getCurrentUser();
+      if (existing) await signOut();
     } catch (e) {
-      // Ignore errors if no one was signed in
+      // No existing session — that's fine, proceed
     }
 
+    // Sign in with Cognito
     const { isSignedIn } = await signIn({ username: email, password });
-    
-    if (isSignedIn) {
-      // Fetch the session manually here so we can throw an error directly to the Login UI
-      const session = await fetchAuthSession();
-      const idToken = session.tokens.idToken.toString();
-      
-      const res = await fetch(`/api/auth/me`, {
-        headers: { Authorization: `Bearer ${idToken}` }
-      });
-      
-      if (!res.ok) {
-        await signOut(); // Cleanup
-        throw new Error('Backend is unreachable! Please make sure your Node.js server (localhost:5000) is running.');
-      }
-      
-      const data = await res.json();
-      setUser(data.user);
-      setToken(idToken);
+
+    if (!isSignedIn) {
+      throw new Error('Sign-in was not completed. Please try again.');
     }
+
+    // Force-refresh to guarantee we get a fresh token (not a cached/stale one)
+    const session = await fetchAuthSession({ forceRefresh: true });
+
+    if (!session.tokens?.idToken) {
+      await signOut();
+      throw new Error('Failed to retrieve session tokens from Cognito.');
+    }
+
+    const idToken = session.tokens.idToken.toString();
+
+    // Validate with our backend
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+
+    if (!res.ok) {
+      await signOut();
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(
+        errData.message ||
+        'The backend server rejected the login. Make sure your Node.js server is running at localhost:5000.'
+      );
+    }
+
+    const data = await res.json();
+    setUser(data.user);
+    setToken(idToken);
   }
 
   async function logout() {
