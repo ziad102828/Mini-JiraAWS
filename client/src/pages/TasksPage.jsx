@@ -16,6 +16,7 @@ import { api } from '../lib/api';
 import MainLayout from '../components/layout/MainLayout';
 import KanbanColumn from '../components/kanban/KanbanColumn';
 import TaskCard from '../components/kanban/TaskCard';
+import CreateTaskModal from '../components/kanban/CreateTaskModal';
 import { Loader2, Plus, Filter, Users } from 'lucide-react';
 
 const COLUMNS = [
@@ -30,6 +31,8 @@ export default function TasksPage() {
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState(user?.role === 'manager' ? 'all' : user?.teamId);
   
   // Sensors for dnd-kit
   const sensors = useSensors(
@@ -41,10 +44,17 @@ export default function TasksPage() {
     })
   );
 
+  // Fetch Teams for Manager filter
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => api.getTeams(token),
+    enabled: !!token && user?.role === 'manager'
+  });
+
   // Fetch Tasks
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks', user?.teamId],
-    queryFn: () => api.getTasks(token, user?.role === 'manager' ? null : user?.teamId),
+    queryKey: ['tasks', selectedTeam],
+    queryFn: () => api.getTasks(token, selectedTeam === 'all' ? null : selectedTeam),
     enabled: !!token && !!user
   });
 
@@ -60,16 +70,6 @@ export default function TasksPage() {
     const { active } = event;
     setActiveId(active.id);
     setActiveTask(tasks.find(t => t.taskId === active.id));
-  };
-
-  const onDragOver = (event) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
   };
 
   const onDragEnd = (event) => {
@@ -113,10 +113,26 @@ export default function TasksPage() {
           </div>
           
           <div className="flex gap-3">
-            <button className="flex items-center px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-gray-300 hover:bg-white/10 transition-colors text-sm">
-              <Filter size={16} className="mr-2" /> Filter
-            </button>
-            <button className="flex items-center px-4 py-2 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 text-sm font-semibold">
+            {user?.role === 'manager' && (
+              <div className="flex items-center bg-white/5 border border-white/10 rounded-xl px-3 mr-2">
+                <Users size={16} className="text-gray-400 mr-2" />
+                <select 
+                  className="bg-transparent text-sm text-gray-300 py-2 focus:outline-none"
+                  value={selectedTeam}
+                  onChange={(e) => setSelectedTeam(e.target.value)}
+                >
+                  <option value="all">All Teams</option>
+                  {teamsData?.teams?.map(team => (
+                    <option key={team.teamId} value={team.teamId}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center px-4 py-2 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 text-sm font-semibold"
+            >
               <Plus size={16} className="mr-2" /> New Task
             </button>
           </div>
@@ -157,6 +173,11 @@ export default function TasksPage() {
           </DragOverlay>
         </DndContext>
       </div>
+
+      <CreateTaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </MainLayout>
   );
 }

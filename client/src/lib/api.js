@@ -54,4 +54,14 @@ export const api = {
       method: 'POST', 
       body: JSON.stringify({ fileName, fileType, taskId }) 
     }, token),
+
+  // --- Teams ---
+  getTeams: (token) => 
+    request('/api/teams', {}, token),
+  
+  getTeamMembers: (token, teamId) => 
+    request(`/api/teams/${teamId}/members`, {}, token),
+  
+  getUsers: (token) => 
+    request('/api/users', {}, token),
 };
