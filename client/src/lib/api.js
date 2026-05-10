@@ -1,85 +1,57 @@
 /**
- * API client for communicating with the Express backend.
- * Automatically attaches the Cognito ID token to every request.
+ * Centralized API Client
+ * Uses the proxy defined in vite.config.js for /api requests
  */
-import { fetchAuthSession } from 'aws-amplify/auth';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-async function getAuthHeaders() {
-  try {
-    const session = await fetchAuthSession();
-    const token = session.tokens?.idToken?.toString();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
-
-async function request(method, path, body = null) {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(await getAuthHeaders()),
-  };
-
-  const options = { method, headers };
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const res = await fetch(`${BASE_URL}${path}`, options);
-  const data = await res.json();
+async function request(path, options = {}, token) {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
 
   if (!res.ok) {
-    throw new Error(data.error || data.message || 'Request failed');
+    const err = await res.json();
+    throw new Error(err.error || err.message || 'Request failed');
   }
 
-  return data;
+  return res.json();
 }
 
-// ─── Convenience Methods ─────────────────────────────────
 export const api = {
-  get: (path) => request('GET', path),
-  post: (path, body) => request('POST', path, body),
-  put: (path, body) => request('PUT', path, body),
-  delete: (path) => request('DELETE', path),
-};
-
-// ─── Typed API Modules ───────────────────────────────────
-
-export const tasksApi = {
-  list: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    return api.get(`/api/tasks${query ? `?${query}` : ''}`);
-  },
-  get: (taskId) => api.get(`/api/tasks/${taskId}`),
-  create: (data) => api.post('/api/tasks', data),
-  update: (taskId, data) => api.put(`/api/tasks/${taskId}`, data),
-  delete: (taskId) => api.delete(`/api/tasks/${taskId}`),
-};
-
-export const projectsApi = {
-  list: () => api.get('/api/projects'),
-  get: (id) => api.get(`/api/projects/${id}`),
-  create: (data) => api.post('/api/projects', data),
-  update: (id, data) => api.put(`/api/projects/${id}`, data),
-  delete: (id) => api.delete(`/api/projects/${id}`),
-};
-
-export const teamsApi = {
-  list: () => api.get('/api/teams'),
-  get: (id) => api.get(`/api/teams/${id}`),
-  members: (id) => api.get(`/api/teams/${id}/members`),
-  create: (data) => api.post('/api/teams', data),
-  delete: (id) => api.delete(`/api/teams/${id}`),
-};
-
-export const commentsApi = {
-  listByTask: (taskId) => api.get(`/api/comments/${taskId}`),
-  create: (data) => api.post('/api/comments', data),
-  delete: (id) => api.delete(`/api/comments/${id}`),
-};
-
-export const uploadApi = {
-  getPresignedUrl: (data) => api.post('/api/upload/presigned-url', data),
+  // --- Tasks ---
+  getTasks: (token, teamId) => 
+    request(`/api/tasks${teamId ? `?teamId=${teamId}` : ''}`, {}, token),
+  
+  getTask: (token, taskId) => 
+    request(`/api/tasks/${taskId}`, {}, token),
+  
+  createTask: (token, body) => 
+    request('/api/tasks', { method: 'POST', body: JSON.stringify(body) }, token),
+  
+  updateTaskStatus: (token, taskId, status) => 
+    request(`/api/tasks/${taskId}`, { 
+      method: 'PUT', // Fixed from PATCH to PUT based on our backend implementation
+      body: JSON.stringify({ status }) 
+    }, token),
+  
+  // --- Comments ---
+  getComments: (token, taskId) => 
+    request(`/api/comments/${taskId}`, {}, token), // Correct route
+  
+  createComment: (token, taskId, content) => 
+    request(`/api/comments`, { // Correct route
+      method: 'POST', 
+      body: JSON.stringify({ taskId, content }) 
+    }, token),
+  
+  // --- Upload (Presigned S3 URLs) ---
+  getPresignedUrl: (token, fileName, fileType, taskId) => 
+    request('/api/upload/presigned-url', { 
+      method: 'POST', 
+      body: JSON.stringify({ fileName, fileType, taskId }) 
+    }, token),
 };
