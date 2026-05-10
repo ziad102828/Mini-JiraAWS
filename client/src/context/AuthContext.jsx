@@ -18,18 +18,21 @@ export function AuthProvider({ children }) {
       // Step 1: Does Amplify have any cached session at all?
       await getCurrentUser();
 
-      // Step 2: Fetch fresh tokens (forceRefresh avoids stale cached tokens)
+      // Step 2: Fetch fresh tokens
       const session = await fetchAuthSession({ forceRefresh: true });
 
-      if (!session.tokens?.idToken) {
+      if (!session.tokens?.idToken || !session.tokens?.accessToken) {
         throw new Error('No valid session tokens found');
       }
 
-      const idToken = session.tokens.idToken.toString();
+      // idToken  → used for all protected API routes (has custom:role, custom:teamId)
+      // accessToken → used ONLY for /api/auth/me (AWS GetUserCommand requires it)
+      const idToken     = session.tokens.idToken.toString();
+      const accessToken = session.tokens.accessToken.toString();
 
-      // Step 3: Validate the token with our backend
+      // Step 3: Validate with our backend using the accessToken
       const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${idToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!res.ok) {
@@ -39,7 +42,8 @@ export function AuthProvider({ children }) {
       }
 
       const data = await res.json();
-      setUser(data.user);
+      // Store idToken for all subsequent API calls
+      setUser({ ...data, userId: data.userId });
       setToken(idToken);
     } catch (err) {
       console.log('No active session:', err.message);
@@ -66,32 +70,31 @@ export function AuthProvider({ children }) {
       throw new Error('Sign-in was not completed. Please try again.');
     }
 
-    // Force-refresh to guarantee we get a fresh token (not a cached/stale one)
+    // Force-refresh to guarantee we get fresh tokens (not cached/stale ones)
     const session = await fetchAuthSession({ forceRefresh: true });
 
-    if (!session.tokens?.idToken) {
+    if (!session.tokens?.idToken || !session.tokens?.accessToken) {
       await signOut();
       throw new Error('Failed to retrieve session tokens from Cognito.');
     }
 
-    const idToken = session.tokens.idToken.toString();
+    const idToken     = session.tokens.idToken.toString();
+    const accessToken = session.tokens.accessToken.toString();
 
-    // Validate with our backend
+    // /me requires the accessToken (AWS GetUserCommand)
     const res = await fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${idToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!res.ok) {
       await signOut();
       const errData = await res.json().catch(() => ({}));
-      throw new Error(
-        errData.message ||
-        'The backend server rejected the login. Make sure your Node.js server is running at localhost:5000.'
-      );
+      throw new Error(errData.error || 'Login failed. Please try again.');
     }
 
     const data = await res.json();
-    setUser(data.user);
+    // Store idToken for all subsequent protected API calls
+    setUser(data);
     setToken(idToken);
   }
 
