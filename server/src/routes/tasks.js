@@ -163,6 +163,19 @@ router.put('/:taskId', enforceTeamIsolation, async (req, res, next) => {
  */
 router.delete('/:taskId', requireRole('manager', 'admin'), async (req, res, next) => {
   try {
+    const task = await taskService.getTaskById(req.params.taskId);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    // Delete image from S3 if it exists
+    if (task.imageKey) {
+      const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+      const { s3Client, S3_BUCKETS } = await import('../config/s3.js');
+      await s3Client.send(new DeleteObjectCommand({
+        Bucket: S3_BUCKETS.ORIGINALS,
+        Key: task.imageKey
+      }));
+    }
+
     await taskService.deleteTask(req.params.taskId);
     res.json({ message: 'Task deleted successfully' });
   } catch (err) {

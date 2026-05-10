@@ -20,6 +20,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('comments');
   const [newComment, setNewComment] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch Comments
   const { data: commentsData, isLoading: loadingComments } = useQuery({
@@ -54,6 +55,21 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', task.taskId] });
       setNewComment('');
+    }
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId) => api.deleteComment(token, task.taskId, commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', task.taskId] });
+    }
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: () => api.deleteTask(token, task.taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      onClose();
     }
   });
 
@@ -102,9 +118,23 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                 </span>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 flex-shrink-0">
-              <X size={20} />
-            </button>
+            <div className="flex gap-2">
+              {user?.role === 'manager' && (
+                <button 
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this task?')) {
+                      deleteTaskMutation.mutate();
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20"
+                >
+                  Delete Task
+                </button>
+              )}
+              <button onClick={onClose} className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 flex-shrink-0">
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {task.imageKey && imageUrl && (
@@ -171,8 +201,18 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                       </div>
                       <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-none p-4 flex-1">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-sm text-gray-200">{comment.authorName || 'Unknown'}</span>
-                          <span className="text-xs text-gray-500">{safeFormat(comment.createdAt)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-gray-200">{comment.authorName || 'Unknown'}</span>
+                            <span className="text-xs text-gray-500">{safeFormat(comment.createdAt)}</span>
+                          </div>
+                          {(user?.userId === comment.authorId || user?.role === 'manager') && (
+                            <button 
+                              onClick={() => deleteCommentMutation.mutate(comment.commentId)}
+                              className="text-xs text-red-400/50 hover:text-red-400 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                         <p className="text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</p>
                       </div>
@@ -220,18 +260,23 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
         {/* ── Comment input ──────────────────────────────── */}
         {activeTab === 'comments' && (
           <div className="p-4 border-t border-white/5 bg-[#0a0a0e] flex-shrink-0">
-            <form onSubmit={handlePostComment} className="flex gap-3">
-              <input
-                type="text"
-                placeholder="Write a comment..."
+            <form onSubmit={handlePostComment} className="flex gap-3 items-end">
+              <textarea
+                placeholder="Write a comment... (Press Enter to send, Shift+Enter for new line)"
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handlePostComment(e);
+                  }
+                }}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none h-20"
               />
               <button
                 type="submit"
                 disabled={!newComment.trim() || commentMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-12 shrink-0"
+                className="bg-blue-600 hover:bg-blue-500 text-white h-12 w-12 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shrink-0 mb-1"
               >
                 {commentMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>

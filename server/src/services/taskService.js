@@ -27,7 +27,10 @@ export async function createTask(data) {
     updatedAt: now,
   };
 
-  if (data.assigneeId) task.assigneeId = data.assigneeId;
+  if (data.assigneeId) {
+    task.assigneeId = data.assigneeId;
+    task.assigneeName = data.assigneeName || 'Unknown';
+  }
   if (data.deadline) task.deadline = data.deadline;
   if (data.imageKey) task.imageKey = data.imageKey;
 

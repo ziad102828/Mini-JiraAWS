@@ -91,7 +91,10 @@ export default function CreateTaskModal({ isOpen, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    const assigneeName = formData.assigneeId 
+      ? usersData?.users?.find(u => u.userId === formData.assigneeId)?.name 
+      : undefined;
+    mutation.mutate({ ...formData, assigneeName });
   };
 
   const filteredUsers = usersData?.users?.filter(

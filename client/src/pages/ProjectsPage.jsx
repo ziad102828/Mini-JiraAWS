@@ -32,6 +32,11 @@ export default function ProjectsPage() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.deleteProject(token, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] })
+  });
+
   const projects = projectsData?.projects || [];
 
   return (
@@ -111,12 +116,12 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {projects.map(project => (
-              <div key={project.projectId} className="glass-panel p-6 rounded-2xl hover:border-blue-500/30 transition-colors group">
+              <div key={project.projectId} className="glass-panel p-6 rounded-2xl hover:border-blue-500/30 transition-colors group relative">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 group-hover:bg-indigo-500/20 transition-colors">
                     <FolderKanban size={20} className="text-indigo-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-8">
                     <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">{project.name}</h3>
                     {project.description && (
                       <p className="text-sm text-gray-400 mt-1 line-clamp-2">{project.description}</p>
@@ -127,6 +132,19 @@ export default function ProjectsPage() {
                       </div>
                     )}
                   </div>
+                  {user?.role === 'manager' && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this project?')) {
+                          deleteMutation.mutate(project.projectId);
+                        }
+                      }}
+                      className="absolute top-4 right-4 p-2 text-red-400/0 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all group-hover:text-red-400/50"
+                      title="Delete Project"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
