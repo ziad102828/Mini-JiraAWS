@@ -3,8 +3,10 @@
  * Uses the proxy defined in vite.config.js for /api requests
  */
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api';
+
 async function request(path, options = {}, token) {
-  const res = await fetch(path, {
+  const res = await fetch(`${BASE_URL}${path.replace(/^\/api/, '')}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -87,6 +89,9 @@ export const api = {
 
   createProject: (token, body) =>
     request('/api/projects', { method: 'POST', body: JSON.stringify(body) }, token),
+
+  updateProject: (token, projectId, body) =>
+    request(`/api/projects/${projectId}`, { method: 'PUT', body: JSON.stringify(body) }, token),
 
   deleteProject: (token, projectId) =>
     request(`/api/projects/${projectId}`, { method: 'DELETE' }, token),

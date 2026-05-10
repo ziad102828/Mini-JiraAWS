@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import MainLayout from '../components/layout/MainLayout';
-import { Plus, Loader2, FolderKanban, X, Calendar } from 'lucide-react';
+import { Plus, Loader2, FolderKanban, X, Calendar, Edit2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 function safeFormat(d, fmt = 'MMM d, yyyy') {
@@ -15,6 +15,7 @@ export default function ProjectsPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [form, setForm] = useState({ name: '', description: '' });
 
@@ -29,6 +30,15 @@ export default function ProjectsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setShowCreate(false);
+      setForm({ name: '', description: '' });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => api.updateProject(token, projectToEdit.projectId, form),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setProjectToEdit(null);
       setForm({ name: '', description: '' });
     }
   });
@@ -110,6 +120,51 @@ export default function ProjectsPage() {
           </div>
         )}
 
+        {/* Edit Project Modal */}
+        {projectToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-[#11111a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">Edit Project</h2>
+                <button onClick={() => { setProjectToEdit(null); setForm({ name: '', description: '' }); }} className="text-gray-400 hover:text-white"><X size={18} /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Project Name *</label>
+                  <input
+                    autoFocus required type="text"
+                    placeholder="e.g. Mini-Jira MVP"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Description</label>
+                  <textarea
+                    placeholder="What is this project about?"
+                    value={form.description}
+                    onChange={e => setForm({ ...form, description: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 h-20 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => { setProjectToEdit(null); setForm({ name: '', description: '' }); }} className="flex-1 py-2.5 border border-white/10 rounded-xl text-gray-300 hover:bg-white/5 transition-colors font-medium">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => form.name.trim() && updateMutation.mutate()}
+                    disabled={!form.name.trim() || updateMutation.isPending}
+                    className="flex-[2] py-2.5 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all font-semibold disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {updateMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Projects List */}
         {isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="animate-spin text-blue-500" size={32} /></div>
@@ -141,13 +196,22 @@ export default function ProjectsPage() {
                     )}
                   </div>
                   {user?.role === 'manager' && (
-                    <button
-                      onClick={() => setProjectToDelete(project.projectId)}
-                      className="absolute top-4 right-4 p-2 text-red-400/0 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all group-hover:text-red-400/50"
-                      title="Delete Project"
-                    >
-                      <X size={18} />
-                    </button>
+                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => { setProjectToEdit(project); setForm({ name: project.name, description: project.description || '' }); }}
+                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                        title="Edit Project"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setProjectToDelete(project.projectId)}
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                        title="Delete Project"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
