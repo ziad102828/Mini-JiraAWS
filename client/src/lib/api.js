@@ -38,15 +38,21 @@ export const api = {
       body: JSON.stringify({ status }) 
     }, token),
   
+  deleteTask: (token, taskId) =>
+    request(`/api/tasks/${taskId}`, { method: 'DELETE' }, token),
+
   // --- Comments ---
   getComments: (token, taskId) => 
     request(`/api/comments/${taskId}`, {}, token), // Correct route
   
   createComment: (token, taskId, content) => 
-    request(`/api/comments`, { // Correct route
+    request(`/api/comments`, { 
       method: 'POST', 
       body: JSON.stringify({ taskId, content }) 
     }, token),
+
+  deleteComment: (token, taskId, commentId) =>
+    request(`/api/comments/${commentId}?taskId=${taskId}`, { method: 'DELETE' }, token),
   
   // --- Upload (Presigned S3 URLs) ---
   getPresignedUrl: (token, fileName, fileType, fileSize, taskId) =>
@@ -81,4 +87,7 @@ export const api = {
 
   createProject: (token, body) =>
     request('/api/projects', { method: 'POST', body: JSON.stringify(body) }, token),
+
+  deleteProject: (token, projectId) =>
+    request(`/api/projects/${projectId}`, { method: 'DELETE' }, token),
 };

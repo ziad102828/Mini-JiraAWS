@@ -20,7 +20,8 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('comments');
   const [newComment, setNewComment] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   // Fetch Comments
   const { data: commentsData, isLoading: loadingComments } = useQuery({
@@ -62,7 +63,9 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
     mutationFn: (commentId) => api.deleteComment(token, task.taskId, commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', task.taskId] });
-    }
+      setCommentToDelete(null);
+    },
+    onError: (err) => alert(`Failed to delete comment: ${err.message}`)
   });
 
   const deleteTaskMutation = useMutation({
@@ -70,6 +73,10 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       onClose();
+    },
+    onError: (err) => {
+      alert(`Failed to delete task: ${err.message}`);
+      setTaskToDelete(false);
     }
   });
 
@@ -99,7 +106,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#11111a] border border-white/10 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[#11111a] border border-white/10 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh]">
 
         {/* ── Header ─────────────────────────────────────── */}
         <div className="p-6 border-b border-white/5 flex-shrink-0">
@@ -121,11 +128,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
             <div className="flex gap-2">
               {user?.role === 'manager' && (
                 <button 
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this task?')) {
-                      deleteTaskMutation.mutate();
-                    }
-                  }}
+                  onClick={() => setTaskToDelete(true)}
                   className="px-3 py-1.5 text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20"
                 >
                   Delete Task
@@ -139,7 +142,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
 
           {task.imageKey && imageUrl && (
             <div className="mb-4 rounded-xl overflow-hidden border border-white/10 bg-black/40">
-              <img src={imageUrl} alt="Task Attachment" className="w-full max-h-64 object-contain" />
+              <img src={imageUrl} alt="Task Attachment" className="w-full max-h-32 object-contain" />
             </div>
           )}
 
@@ -165,7 +168,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
         <div className="flex border-b border-white/5 flex-shrink-0">
           {[
             { key: 'comments', label: 'Comments',  Icon: MessageSquare },
-            { key: 'history',  label: 'Audit Log', Icon: History },
+            ...(user?.role === 'manager' ? [{ key: 'history',  label: 'Audit Log', Icon: History }] : []),
           ].map(({ key, label, Icon }) => (
             <button
               key={key}
@@ -207,7 +210,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                           </div>
                           {(user?.userId === comment.authorId || user?.role === 'manager') && (
                             <button 
-                              onClick={() => deleteCommentMutation.mutate(comment.commentId)}
+                              onClick={() => setCommentToDelete(comment.commentId)}
                               className="text-xs text-red-400/50 hover:text-red-400 transition-colors"
                             >
                               Delete
@@ -284,6 +287,43 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
           </div>
         )}
       </div>
+
+      {/* Task Delete Confirmation Modal */}
+      {taskToDelete && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-2xl">
+          <div className="bg-[#1a1a24] border border-red-500/20 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Task</h3>
+            <p className="text-sm text-gray-400 mb-6">Are you sure you want to delete this task? This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setTaskToDelete(false)} className="flex-1 py-2 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors text-sm font-medium">
+                Cancel
+              </button>
+              <button onClick={() => deleteTaskMutation.mutate()} disabled={deleteTaskMutation.isPending} className="flex-1 py-2 rounded-xl bg-red-600 text-white hover:bg-red-500 transition-colors text-sm font-bold flex justify-center items-center">
+                {deleteTaskMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Delete Confirmation Modal */}
+      {commentToDelete && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-2xl">
+          <div className="bg-[#1a1a24] border border-red-500/20 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Comment</h3>
+            <p className="text-sm text-gray-400 mb-6">Are you sure you want to delete this comment?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setCommentToDelete(null)} className="flex-1 py-2 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors text-sm font-medium">
+                Cancel
+              </button>
+              <button onClick={() => deleteCommentMutation.mutate(commentToDelete)} disabled={deleteCommentMutation.isPending} className="flex-1 py-2 rounded-xl bg-red-600 text-white hover:bg-red-500 transition-colors text-sm font-bold flex justify-center items-center">
+                {deleteCommentMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

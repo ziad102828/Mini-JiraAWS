@@ -15,6 +15,7 @@ export default function ProjectsPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
   const [form, setForm] = useState({ name: '', description: '' });
 
   const { data: projectsData, isLoading } = useQuery({
@@ -34,7 +35,14 @@ export default function ProjectsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.deleteProject(token, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setProjectToDelete(null);
+    },
+    onError: (err) => {
+      alert(`Failed to delete project: ${err.message}`);
+      setProjectToDelete(null);
+    }
   });
 
   const projects = projectsData?.projects || [];
@@ -134,11 +142,7 @@ export default function ProjectsPage() {
                   </div>
                   {user?.role === 'manager' && (
                     <button
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this project?')) {
-                          deleteMutation.mutate(project.projectId);
-                        }
-                      }}
+                      onClick={() => setProjectToDelete(project.projectId)}
                       className="absolute top-4 right-4 p-2 text-red-400/0 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all group-hover:text-red-400/50"
                       title="Delete Project"
                     >
@@ -151,6 +155,24 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
+
+      {/* Project Delete Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#1a1a24] border border-red-500/20 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Project</h3>
+            <p className="text-sm text-gray-400 mb-6">Are you sure you want to delete this project? This will permanently remove it.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setProjectToDelete(null)} className="flex-1 py-2 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors text-sm font-medium">
+                Cancel
+              </button>
+              <button onClick={() => deleteMutation.mutate(projectToDelete)} disabled={deleteMutation.isPending} className="flex-1 py-2 rounded-xl bg-red-600 text-white hover:bg-red-500 transition-colors text-sm font-bold flex justify-center items-center">
+                {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }
