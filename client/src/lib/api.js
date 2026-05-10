@@ -49,10 +49,10 @@ export const api = {
     }, token),
   
   // --- Upload (Presigned S3 URLs) ---
-  getPresignedUrl: (token, fileName, fileType, taskId) => 
-    request('/api/upload/presigned-url', { 
-      method: 'POST', 
-      body: JSON.stringify({ fileName, fileType, taskId }) 
+  getPresignedUrl: (token, fileName, fileType, fileSize, taskId) =>
+    request('/api/upload/presigned-url', {
+      method: 'POST',
+      body: JSON.stringify({ fileName, fileType, fileSize, taskId }),
     }, token),
 
   // --- Audit Log ---
@@ -74,4 +74,11 @@ export const api = {
 
   getUsers: (token) =>
     request('/api/users', {}, token),
+
+  // --- Projects ---
+  getProjects: (token) =>
+    request('/api/projects', {}, token),
+
+  createProject: (token, body) =>
+    request('/api/projects', { method: 'POST', body: JSON.stringify(body) }, token),
 };

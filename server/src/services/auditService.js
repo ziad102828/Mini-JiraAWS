@@ -13,11 +13,12 @@ import { docClient, TABLE_NAMES } from '../config/dynamodb.js';
 /**
  * Log a status change in the audit trail.
  */
-export async function logStatusChange({ taskId, actorId, fromStatus, toStatus }) {
+export async function logStatusChange({ taskId, actorId, actorName, fromStatus, toStatus }) {
   const entry = {
     taskId,
     timestamp: new Date().toISOString(),
     actorId,
+    actorName: actorName || actorId,
     fromStatus,
     toStatus,
   };

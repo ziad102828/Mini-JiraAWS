@@ -141,6 +141,7 @@ router.put('/:taskId', enforceTeamIsolation, async (req, res, next) => {
           await auditService.logStatusChange({
             taskId: req.params.taskId,
             actorId: req.user.userId,
+            actorName: req.user.name,
             fromStatus: existingTask.status,
             toStatus: req.body.status,
           });
