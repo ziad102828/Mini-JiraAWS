@@ -131,12 +131,14 @@ export default function TasksPage() {
               </div>
             )}
             
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center px-4 py-2 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 text-sm font-semibold"
-            >
-              <Plus size={16} className="mr-2" /> New Task
-            </button>
+            {user?.role === 'manager' && (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 text-sm font-semibold"
+              >
+                <Plus size={16} className="mr-2" /> New Task
+              </button>
+            )}
           </div>
         </div>
 
