@@ -8,11 +8,13 @@ export default function DashboardPage() {
   const { user, token } = useAuth();
 
   // Fetch real tasks to calculate stats
-  const { data: tasks = [] } = useQuery({
+  const { data: tasksData } = useQuery({
     queryKey: ['tasks', user?.teamId],
     queryFn: () => api.getTasks(token, user?.role === 'manager' ? null : user?.teamId),
     enabled: !!token && !!user
   });
+
+  const tasks = tasksData?.tasks || [];
 
   // Calculate Real Stats
   const activeTasks = tasks.filter(t => t.status !== 'done').length;

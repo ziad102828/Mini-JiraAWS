@@ -52,11 +52,13 @@ export default function TasksPage() {
   });
 
   // Fetch Tasks
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasksData, isLoading } = useQuery({
     queryKey: ['tasks', selectedTeam],
     queryFn: () => api.getTasks(token, selectedTeam === 'all' ? null : selectedTeam),
     enabled: !!token && !!user
   });
+
+  const tasks = tasksData?.tasks || [];
 
   // Update Task Mutation
   const updateMutation = useMutation({
