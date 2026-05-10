@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import TasksPage from './pages/TasksPage';
 
 // Configure TanStack Query
 const queryClient = new QueryClient({
@@ -20,8 +21,8 @@ function ProtectedRoute({ children }) {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0e]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -44,6 +45,12 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/tasks" element={
+              <ProtectedRoute>
+                <TasksPage />
               </ProtectedRoute>
             } />
             
