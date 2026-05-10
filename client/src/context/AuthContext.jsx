@@ -48,8 +48,24 @@ export function AuthProvider({ children }) {
     }
 
     const { isSignedIn } = await signIn({ username: email, password });
+    
     if (isSignedIn) {
-      await checkUser();
+      // Fetch the session manually here so we can throw an error directly to the Login UI
+      const session = await fetchAuthSession();
+      const idToken = session.tokens.idToken.toString();
+      
+      const res = await fetch(`/api/auth/me`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      
+      if (!res.ok) {
+        await signOut(); // Cleanup
+        throw new Error('Backend is unreachable! Please make sure your Node.js server (localhost:5000) is running.');
+      }
+      
+      const data = await res.json();
+      setUser(data.user);
+      setToken(idToken);
     }
   }
 
