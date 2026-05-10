@@ -15,18 +15,16 @@ export function AuthProvider({ children }) {
 
   async function checkUser() {
     try {
-      // Step 1: Does Amplify have any cached session at all?
+      // Step 1: Does Amplify have any cached session?
       await getCurrentUser();
 
-      // Step 2: Fetch fresh tokens
-      const session = await fetchAuthSession({ forceRefresh: true });
+      // Step 2: Get tokens from cache (no network call - fast)
+      const session = await fetchAuthSession();
 
       if (!session.tokens?.idToken || !session.tokens?.accessToken) {
         throw new Error('No valid session tokens found');
       }
 
-      // idToken  → used for all protected API routes (has custom:role, custom:teamId)
-      // accessToken → used ONLY for /api/auth/me (AWS GetUserCommand requires it)
       const idToken     = session.tokens.idToken.toString();
       const accessToken = session.tokens.accessToken.toString();
 
@@ -36,14 +34,12 @@ export function AuthProvider({ children }) {
       });
 
       if (!res.ok) {
-        // Backend rejected the token — clear Amplify session too to stay in sync
         await signOut();
         throw new Error('Session expired or invalid');
       }
 
       const data = await res.json();
-      // Store idToken for all subsequent API calls
-      setUser({ ...data, userId: data.userId });
+      setUser(data);
       setToken(idToken);
     } catch (err) {
       console.log('No active session:', err.message);
@@ -55,22 +51,21 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    // If Amplify has a stale session, clear it before signing in as someone else
+    // Clear any stale Amplify session before signing in
     try {
       const existing = await getCurrentUser();
       if (existing) await signOut();
     } catch (e) {
-      // No existing session — that's fine, proceed
+      // No existing session — fine
     }
 
-    // Sign in with Cognito
     const { isSignedIn } = await signIn({ username: email, password });
 
     if (!isSignedIn) {
       throw new Error('Sign-in was not completed. Please try again.');
     }
 
-    // Force-refresh to guarantee we get fresh tokens (not cached/stale ones)
+    // After fresh sign-in, use forceRefresh to get brand new tokens
     const session = await fetchAuthSession({ forceRefresh: true });
 
     if (!session.tokens?.idToken || !session.tokens?.accessToken) {
@@ -81,7 +76,6 @@ export function AuthProvider({ children }) {
     const idToken     = session.tokens.idToken.toString();
     const accessToken = session.tokens.accessToken.toString();
 
-    // /me requires the accessToken (AWS GetUserCommand)
     const res = await fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -93,7 +87,6 @@ export function AuthProvider({ children }) {
     }
 
     const data = await res.json();
-    // Store idToken for all subsequent protected API calls
     setUser(data);
     setToken(idToken);
   }
