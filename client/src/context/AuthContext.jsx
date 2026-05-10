@@ -40,6 +40,13 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
+    // Force sign out first in case another session is stuck in the browser cache
+    try {
+      await signOut();
+    } catch (e) {
+      // Ignore errors if no one was signed in
+    }
+
     const { isSignedIn } = await signIn({ username: email, password });
     if (isSignedIn) {
       await checkUser();
