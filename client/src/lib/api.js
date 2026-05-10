@@ -55,6 +55,10 @@ export const api = {
       body: JSON.stringify({ fileName, fileType, taskId }) 
     }, token),
 
+  // --- Audit Log ---
+  getAuditLog: (token, taskId) =>
+    request(`/api/tasks/${taskId}/audit`, {}, token),
+
   // --- Teams ---
   getTeams: (token) => 
     request('/api/teams', {}, token),

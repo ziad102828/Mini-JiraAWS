@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Calendar, User, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function TaskCard({ task }) {
+export default function TaskCard({ task, onClick }) {
   const {
     attributes,
     listeners,
@@ -32,6 +32,9 @@ export default function TaskCard({ task }) {
       style={style}
       {...attributes}
       {...listeners}
+      onClick={() => {
+        if (!isDragging && onClick) onClick(task);
+      }}
       className="bg-white/5 border border-white/10 p-4 rounded-xl mb-3 cursor-grab active:cursor-grabbing hover:border-white/20 transition-colors group"
     >
       <div className="flex justify-between items-start mb-3">

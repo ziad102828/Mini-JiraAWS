@@ -17,6 +17,7 @@ import MainLayout from '../components/layout/MainLayout';
 import KanbanColumn from '../components/kanban/KanbanColumn';
 import TaskCard from '../components/kanban/TaskCard';
 import CreateTaskModal from '../components/kanban/CreateTaskModal';
+import TaskDetailModal from '../components/kanban/TaskDetailModal';
 import { Loader2, Plus, Filter, Users } from 'lucide-react';
 
 const COLUMNS = [
@@ -33,6 +34,8 @@ export default function TasksPage() {
   const [activeTask, setActiveTask] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(user?.role === 'manager' ? 'all' : user?.teamId);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
   
   // Sensors for dnd-kit
   const sensors = useSensors(
@@ -67,6 +70,11 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
   });
+
+  const handleCardClick = (task) => {
+    setSelectedTaskForDetail(task);
+    setDetailModalOpen(true);
+  };
 
   const onDragStart = (event) => {
     const { active } = event;
@@ -156,6 +164,7 @@ export default function TasksPage() {
                 id={col.id}
                 title={col.title}
                 tasks={tasks.filter(t => t.status === col.id)}
+                onCardClick={handleCardClick}
               />
             ))}
           </div>
@@ -181,6 +190,12 @@ export default function TasksPage() {
       <CreateTaskModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
+      />
+
+      <TaskDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        task={selectedTaskForDetail}
       />
     </MainLayout>
   );

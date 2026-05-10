@@ -2,7 +2,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import TaskCard from './TaskCard';
 
-export default function KanbanColumn({ id, title, tasks }) {
+export default function KanbanColumn({ id, title, tasks, onCardClick }) {
   const { setNodeRef } = useDroppable({ id });
 
   return (
@@ -26,7 +26,7 @@ export default function KanbanColumn({ id, title, tasks }) {
           strategy={verticalListSortingStrategy}
         >
           {tasks.map((task) => (
-            <TaskCard key={task.taskId} task={task} />
+            <TaskCard key={task.taskId} task={task} onClick={onCardClick} />
           ))}
           {tasks.length === 0 && (
             <div className="h-full flex items-center justify-center border-2 border-dashed border-white/5 rounded-xl py-8">
