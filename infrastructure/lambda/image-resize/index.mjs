@@ -1,77 +1,49 @@
-/**
- * ═══════════════════════════════════════════════════════════
- * Lambda: Image Resize
- * ═══════════════════════════════════════════════════════════
- *
- * Trigger: S3 PUT event on the originals bucket
- * Action:  Reads the uploaded image, resizes it to a thumbnail
- *          (300x300 max), and writes it to the resized bucket.
- *
- * Runtime: Node.js 20.x
- * Layer:   Include `sharp` as a Lambda Layer or bundle it.
- *
- * IAM Permissions needed:
- *   - s3:GetObject on originals bucket
- *   - s3:PutObject on resized bucket
- * ═══════════════════════════════════════════════════════════
- */
-
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
 const s3 = new S3Client({ region: 'eu-north-1' });
-const RESIZED_BUCKET = process.env.RESIZED_BUCKET || 'minijira-resized';
-const MAX_WIDTH = 300;
-const MAX_HEIGHT = 300;
+const RESIZED_BUCKET = process.env.S3_RESIZED_BUCKET;
 
 export const handler = async (event) => {
-  console.log('📸 Image Resize Lambda triggered');
-  console.log('Event:', JSON.stringify(event, null, 2));
+  console.log('📸 Image Resize Lambda triggered:', JSON.stringify(event, null, 2));
 
   for (const record of event.Records) {
-    const sourceBucket = record.s3.bucket.name;
-    const sourceKey = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+    const bucket = record.s3.bucket.name;
+    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
 
-    console.log(`Processing: s3://${sourceBucket}/${sourceKey}`);
+    console.log(`🔍 Processing: s3://${bucket}/${key}`);
 
     try {
-      // 1. Get the original image from S3
-      const getCommand = new GetObjectCommand({
-        Bucket: sourceBucket,
-        Key: sourceKey,
-      });
-      const response = await s3.send(getCommand);
-      const imageBuffer = Buffer.from(await response.Body.transformToByteArray());
+      // 1. Download original from S3
+      const getResult = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      const chunks = [];
+      for await (const chunk of getResult.Body) {
+        chunks.push(chunk);
+      }
+      const imageBuffer = Buffer.concat(chunks);
 
-      // 2. Resize with sharp
-      const resizedBuffer = await sharp(imageBuffer)
-        .resize(MAX_WIDTH, MAX_HEIGHT, {
-          fit: 'inside',          // Maintain aspect ratio
-          withoutEnlargement: true, // Don't upscale small images
-        })
-        .jpeg({ quality: 80 })
+      // 2. Resize to 400x400 thumbnail
+      console.log('✂️ Resizing image...');
+      const resized = await sharp(imageBuffer)
+        .resize(400, 400, { fit: 'cover' })
+        .jpeg({ quality: 85 })
         .toBuffer();
 
-      // 3. Upload the resized image to the resized bucket
-      const destKey = `thumbnails/${sourceKey}`;
-      const putCommand = new PutObjectCommand({
+      // 3. Upload to resized bucket
+      console.log(`📤 Uploading to: s3://${RESIZED_BUCKET}/${key}`);
+      await s3.send(new PutObjectCommand({
         Bucket: RESIZED_BUCKET,
-        Key: destKey,
-        Body: resizedBuffer,
+        Key: key,
+        Body: resized,
         ContentType: 'image/jpeg',
-        Metadata: {
-          'original-bucket': sourceBucket,
-          'original-key': sourceKey,
-        },
-      });
-      await s3.send(putCommand);
+      }));
 
-      console.log(`✅ Resized and saved to s3://${RESIZED_BUCKET}/${destKey}`);
+      console.log('✅ Successfully resized and uploaded!');
     } catch (err) {
-      console.error(`❌ Failed to process ${sourceKey}:`, err);
-      throw err; // Re-throw to mark Lambda invocation as failed
+      console.error(`❌ Error processing ${key}:`, err);
+      throw err; // Lambda will retry if we throw an error
     }
   }
 
-  return { statusCode: 200, body: 'Images processed successfully' };
+  return { statusCode: 200, body: 'Success' };
 };

@@ -1,114 +1,68 @@
-/**
- * ═══════════════════════════════════════════════════════════
- * Lambda: Daily Digest
- * ═══════════════════════════════════════════════════════════
- *
- * Trigger: EventBridge scheduled rule — cron(0 9 * * ? *)
- *          (Runs at 9:00 AM UTC every day)
- *
- * Action:
- *   1. Scans DynamoDB Tasks table for tasks due today
- *   2. Groups tasks by team
- *   3. Publishes a digest email via SNS
- *
- * Runtime: Node.js 20.x
- *
- * IAM Permissions needed:
- *   - dynamodb:Scan on Tasks table
- *   - sns:Publish to the digest SNS topic
- * ═══════════════════════════════════════════════════════════
- */
-
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient, ScanCommand, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
-const ddbClient = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ region: 'eu-north-1' })
-);
-const snsClient = new SNSClient({ region: 'eu-north-1' });
+const ddb = new DynamoDBClient({ region: 'eu-north-1' });
+const sns = new SNSClient({ region: 'eu-north-1' });
 
-const TASKS_TABLE = process.env.TASKS_TABLE || 'MiniJira_Tasks';
-const SNS_TOPIC_ARN = process.env.SNS_DIGEST_TOPIC_ARN;
+const TASKS_TABLE = process.env.TASKS_TABLE;
+const USERS_TABLE = process.env.USERS_TABLE;
+const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
 
-export const handler = async (_event) => {
-  console.log('📬 Daily Digest Lambda triggered');
-
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  console.log(`Looking for tasks due on: ${today}`);
+export const handler = async (event) => {
+  console.log('📅 Daily Digest Lambda triggered');
 
   try {
-    // 1. Scan for tasks with deadline = today (or overdue)
-    const result = await ddbClient.send(
-      new ScanCommand({
-        TableName: TASKS_TABLE,
-        FilterExpression: 'deadline <= :today AND #status <> :done',
-        ExpressionAttributeValues: {
-          ':today': today,
-          ':done': 'Done',
-        },
-        ExpressionAttributeNames: {
-          '#status': 'status',
-        },
-      })
-    );
+    // 1. Scan for all tasks (for a demo, Scan is okay; for production, use an Index on dueDate)
+    const tasksResult = await ddb.send(new ScanCommand({ TableName: TASKS_TABLE }));
+    const allTasks = tasksResult.Items || [];
 
-    const tasks = result.Items || [];
-    console.log(`Found ${tasks.length} tasks due today or overdue`);
+    // 2. Filter for tasks due today or overdue
+    const today = new Date().toISOString().split('T')[0];
+    const pendingTasks = allTasks.filter(item => {
+      const dueDate = item.dueDate?.S;
+      return dueDate && dueDate <= today && item.status?.S !== 'DONE';
+    });
 
-    if (tasks.length === 0) {
-      console.log('No tasks due today. Skipping digest.');
-      return { statusCode: 200, body: 'No tasks due today' };
+    if (pendingTasks.length === 0) {
+      console.log('✅ No pending tasks for today.');
+      return { statusCode: 200, body: 'No tasks to notify' };
     }
 
-    // 2. Group tasks by team
-    const tasksByTeam = {};
-    for (const task of tasks) {
-      const team = task.teamId || 'unassigned';
-      if (!tasksByTeam[team]) tasksByTeam[team] = [];
-      tasksByTeam[team].push(task);
+    // 3. Group tasks by assigneeId
+    const grouped = pendingTasks.reduce((acc, task) => {
+      const userId = task.assigneeId?.S;
+      if (!userId) return acc;
+      if (!acc[userId]) acc[userId] = [];
+      acc[userId].push(task.title?.S);
+      return acc;
+    }, {});
+
+    // 4. Send a summary to each user
+    for (const [userId, taskTitles] of Object.entries(grouped)) {
+      // Fetch user email
+      const userResult = await ddb.send(new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: { userId: { S: userId } }
+      }));
+      
+      const email = userResult.Item?.email?.S;
+      if (!email) continue;
+
+      console.log(`📡 Sending digest to ${email}...`);
+      await sns.send(new PublishCommand({
+        TopicArn: SNS_TOPIC_ARN,
+        Subject: '📝 Your Daily Mini-Jira Digest',
+        Message: `Hello!\n\nYou have ${taskTitles.length} tasks pending/due today:\n\n- ${taskTitles.join('\n- ')}\n\nHave a productive day!`,
+        MessageAttributes: {
+          email: { DataType: 'String', StringValue: email }
+        }
+      }));
     }
 
-    // 3. Build digest message
-    let message = `📋 Mini-Jira Daily Digest — ${today}\n`;
-    message += '═'.repeat(50) + '\n\n';
-
-    for (const [teamId, teamTasks] of Object.entries(tasksByTeam)) {
-      message += `🏷️ Team: ${teamId}\n`;
-      message += '─'.repeat(30) + '\n';
-
-      for (const task of teamTasks) {
-        const isOverdue = task.deadline < today;
-        const flag = isOverdue ? '🔴 OVERDUE' : '🟡 Due Today';
-        message += `  ${flag} | ${task.title}\n`;
-        message += `    Status: ${task.status} | Priority: ${task.priority}\n`;
-        message += `    Assignee: ${task.assigneeId || 'Unassigned'}\n\n`;
-      }
-    }
-
-    message += `\nTotal: ${tasks.length} task(s) requiring attention.\n`;
-
-    // 4. Publish to SNS
-    if (SNS_TOPIC_ARN) {
-      await snsClient.send(
-        new PublishCommand({
-          TopicArn: SNS_TOPIC_ARN,
-          Subject: `Mini-Jira Daily Digest — ${today}`,
-          Message: message,
-        })
-      );
-      console.log('✅ Digest email sent via SNS');
-    } else {
-      console.warn('⚠️ SNS_DIGEST_TOPIC_ARN not set. Digest printed to logs only.');
-      console.log(message);
-    }
-
-    return {
-      statusCode: 200,
-      body: `Digest sent with ${tasks.length} task(s)`,
-    };
+    console.log('✅ All digests sent successfully');
   } catch (err) {
-    console.error('❌ Daily Digest failed:', err);
-    throw err;
+    console.error('❌ Error generating digest:', err);
   }
+
+  return { statusCode: 200 };
 };

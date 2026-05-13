@@ -1,92 +1,77 @@
-/**
- * ═══════════════════════════════════════════════════════════
- * Lambda: Assignment Worker
- * ═══════════════════════════════════════════════════════════
- *
- * Trigger: SQS queue (MiniJira-AssignmentQueue)
- * Action:
- *   1. Reads task assignment messages from SQS
- *   2. Writes an activity log entry to DynamoDB (AuditLog)
- *   3. Publishes a custom CloudWatch metric: TasksAssignedPerTeam
- *
- * Runtime: Node.js 20.x
- *
- * IAM Permissions needed:
- *   - sqs:ReceiveMessage, sqs:DeleteMessage
- *   - dynamodb:PutItem on AuditLog table
- *   - cloudwatch:PutMetricData
- * ═══════════════════════════════════════════════════════════
- */
-
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
 
-const ddbClient = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ region: 'eu-north-1' })
-);
-const cwClient = new CloudWatchClient({ region: 'eu-north-1' });
+const ddb = new DynamoDBClient({ region: 'eu-north-1' });
+const sns = new SNSClient({ region: 'eu-north-1' });
+const cw = new CloudWatchClient({ region: 'eu-north-1' });
 
-const AUDIT_TABLE = process.env.AUDIT_TABLE || 'MiniJira_AuditLog';
+// Environment Variables (Professional Practice)
+const USERS_TABLE = process.env.USERS_TABLE;
+const AUDIT_LOG_TABLE = process.env.AUDIT_LOG_TABLE;
+const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
 
 export const handler = async (event) => {
-  console.log('📋 Assignment Worker Lambda triggered');
-  console.log(`Processing ${event.Records.length} message(s)`);
+  console.log('👷 Assignment Worker triggered');
 
   for (const record of event.Records) {
     try {
-      const message = JSON.parse(record.body);
+      const snsMessage = JSON.parse(record.body);
+      const taskData = typeof snsMessage.Message === 'string' ? JSON.parse(snsMessage.Message) : snsMessage.Message;
+      
+      const { taskId, title, assigneeId, projectId, status } = taskData;
+      console.log(`Processing assignment: Task ${taskId}`);
 
-      // The SNS message wraps the actual payload
-      const payload = message.Message ? JSON.parse(message.Message) : message;
+      // 1. Fetch User Email
+      const userResult = await ddb.send(new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: { userId: { S: assigneeId } }
+      }));
 
-      console.log('Processing assignment:', payload);
+      const userEmail = userResult.Item?.email?.S || 'no-email@example.com';
 
-      // 1. Write activity log to DynamoDB AuditLog table
-      await ddbClient.send(
-        new PutCommand({
-          TableName: AUDIT_TABLE,
-          Item: {
-            taskId: payload.taskId,
-            timestamp: payload.timestamp || new Date().toISOString(),
-            actorId: payload.createdBy || 'system',
-            fromStatus: 'none',
-            toStatus: 'To Do',
-            eventType: 'TASK_ASSIGNED',
-            assigneeId: payload.assigneeId,
-            teamId: payload.teamId,
-          },
-        })
-      );
+      // 2. Log to AuditLog
+      const timestamp = new Date().toISOString();
+      await ddb.send(new PutItemCommand({
+        TableName: AUDIT_LOG_TABLE,
+        Item: {
+          logId: { S: `ASSIGN-${taskId}-${Date.now()}` },
+          taskId: { S: taskId },
+          action: { S: 'TASK_ASSIGNED' },
+          assigneeId: { S: assigneeId },
+          assigneeEmail: { S: userEmail },
+          timestamp: { S: timestamp }
+        }
+      }));
 
-      // 2. Publish CloudWatch custom metric: TasksAssignedPerTeam
-      await cwClient.send(
-        new PutMetricDataCommand({
-          Namespace: 'MiniJira',
-          MetricData: [
-            {
-              MetricName: 'TasksAssignedPerTeam',
-              Dimensions: [
-                {
-                  Name: 'TeamId',
-                  Value: payload.teamId || 'unknown',
-                },
-              ],
-              Value: 1,
-              Unit: 'Count',
-              Timestamp: new Date(),
-            },
-          ],
-        })
-      );
+      // 3. Send Targeted Email
+      await sns.send(new PublishCommand({
+        TopicArn: SNS_TOPIC_ARN,
+        Subject: `🎯 New Task: ${title}`,
+        Message: `Task: ${title}\nProject: ${projectId}\nAssigned to: ${userEmail}\nTime: ${timestamp}`,
+        MessageAttributes: {
+          email: {
+            DataType: 'String',
+            StringValue: userEmail
+          }
+        }
+      }));
 
-      console.log(`✅ Processed assignment for task ${payload.taskId}`);
+      // 4. CloudWatch Metric
+      await cw.send(new PutMetricDataCommand({
+        Namespace: 'MiniJira/Analytics',
+        MetricData: [{
+          MetricName: 'AssignmentsProcessed',
+          Value: 1,
+          Unit: 'Count',
+          Dimensions: [{ Name: 'ProjectID', Value: projectId }]
+        }]
+      }));
+
+      console.log('✅ Successfully processed assignment');
     } catch (err) {
-      console.error('❌ Failed to process SQS message:', err);
-      // Don't throw — allows other messages in the batch to process
-      // The failed message will return to the queue after visibility timeout
+      console.error('❌ Error:', err);
     }
   }
-
-  return { statusCode: 200, body: `Processed ${event.Records.length} messages` };
+  return { statusCode: 200 };
 };
