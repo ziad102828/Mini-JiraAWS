@@ -95,4 +95,10 @@ export const api = {
 
   deleteProject: (token, projectId) =>
     request(`/api/projects/${projectId}`, { method: 'DELETE' }, token),
+
+  assignUserToTeam: (token, userId, teamId) =>
+    request(`/api/users/${userId}/team`, { 
+      method: 'PUT', 
+      body: JSON.stringify({ teamId }) 
+    }, token),
 };

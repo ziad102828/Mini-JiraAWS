@@ -9,6 +9,7 @@ export default function TeamsPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [showAssign, setShowAssign] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState(null); // for detail panel
 
@@ -16,6 +17,12 @@ export default function TeamsPage() {
     queryKey: ['teams'],
     queryFn: () => api.getTeams(token),
     enabled: !!token
+  });
+
+  const { data: allUsersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => api.getUsers(token),
+    enabled: !!token && user?.role === 'manager'
   });
 
   const { data: membersData, isLoading: loadingMembers } = useQuery({
@@ -33,6 +40,15 @@ export default function TeamsPage() {
     }
   });
 
+  const assignMutation = useMutation({
+    mutationFn: ({ userId, teamId }) => api.assignUserToTeam(token, userId, teamId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeam?.teamId] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowAssign(false);
+    }
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (teamId) => api.deleteTeam(token, teamId),
     onSuccess: () => {
@@ -43,6 +59,10 @@ export default function TeamsPage() {
 
   const teams = teamsData?.teams || [];
   const members = membersData?.members || [];
+  const allUsers = allUsersData?.users || [];
+  
+  // Filter users who are NOT in the current team
+  const availableUsers = allUsers.filter(u => u.teamId !== selectedTeam?.teamId);
 
   // ── Team Detail Panel ───────────────────────────────────
   if (selectedTeam) {
@@ -66,16 +86,70 @@ export default function TeamsPage() {
                 <p className="text-gray-500 text-sm font-mono mt-0.5">{selectedTeam.teamId}</p>
               </div>
             </div>
-            {user?.role === 'manager' && (
-              <button
-                onClick={() => deleteMutation.mutate(selectedTeam.teamId)}
-                disabled={deleteMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors text-sm font-medium"
-              >
-                <Trash2 size={14} /> Delete Team
-              </button>
-            )}
+            <div className="flex gap-3">
+              {user?.role === 'manager' && (
+                <button
+                  onClick={() => setShowAssign(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-colors text-sm font-medium shadow-lg shadow-blue-500/20"
+                >
+                  <Plus size={14} /> Add Member
+                </button>
+              )}
+              {user?.role === 'manager' && (
+                <button
+                  onClick={() => deleteMutation.mutate(selectedTeam.teamId)}
+                  disabled={deleteMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors text-sm font-medium"
+                >
+                  <Trash2 size={14} /> Delete Team
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Assign Member Modal */}
+          {showAssign && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-[#11111a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white">Add Team Member</h2>
+                  <button onClick={() => setShowAssign(false)} className="text-gray-400 hover:text-white">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                  {availableUsers.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No users available to add</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {availableUsers.map(u => (
+                        <button
+                          key={u.userId}
+                          onClick={() => assignMutation.mutate({ userId: u.userId, teamId: selectedTeam.teamId })}
+                          disabled={assignMutation.isPending}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-left group"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold">
+                            {(u.name || u.email).substring(0, 1).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-200 group-hover:text-white truncate">{u.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                          </div>
+                          {assignMutation.isPending ? (
+                            <Loader2 size={16} className="animate-spin text-blue-500" />
+                          ) : (
+                            <Plus size={16} className="text-gray-600 group-hover:text-blue-400" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Members */}
           <div className="glass-panel rounded-2xl overflow-hidden">
