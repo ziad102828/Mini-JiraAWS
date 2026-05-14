@@ -35,8 +35,15 @@ Log in to Mini-Jira to view details.
       new PublishCommand({
         TopicArn: SNS_TOPICS.TASK_ASSIGNMENT,
         Subject: `New Task Assigned: ${task.title}`,
-        // Send the raw task object as JSON so the Lambda can read it!
-        Message: JSON.stringify(task),
+        // FIX: Send only the fields the Lambda needs — not the full task object.
+        // Sending the full task wastes bandwidth and could expose sensitive data.
+        Message: JSON.stringify({
+          taskId: task.taskId,
+          title: task.title,
+          assigneeId: task.assigneeId,
+          teamId: task.teamId,
+          projectId: task.projectId,
+        }),
         MessageAttributes: {
           eventType: {
             DataType: 'String',

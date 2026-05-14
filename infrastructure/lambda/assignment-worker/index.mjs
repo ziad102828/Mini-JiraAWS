@@ -37,19 +37,31 @@ export const handler = async (event) => {
 
       const userEmail = userResult.Item?.email?.S || 'no-email@example.com';
 
-      // 2. Log to AuditLog
+      // 2. Log to AuditLog (idempotent write)
+      // FIX: Use deterministic logId (taskId + assigneeId) instead of Date.now().
+      // If Lambda retries the same SQS message, DynamoDB will see the same logId
+      // and the ConditionExpression will prevent a duplicate entry from being written.
       const timestamp = new Date().toISOString();
-      await ddb.send(new PutItemCommand({
-        TableName: AUDIT_LOG_TABLE,
-        Item: {
-          logId: { S: `ASSIGN-${taskId}-${Date.now()}` },
-          taskId: { S: taskId },
-          action: { S: 'TASK_ASSIGNED' },
-          assigneeId: { S: assigneeId },
-          assigneeEmail: { S: userEmail },
-          timestamp: { S: timestamp }
+      try {
+        await ddb.send(new PutItemCommand({
+          TableName: AUDIT_LOG_TABLE,
+          Item: {
+            logId: { S: `ASSIGN-${taskId}-${assigneeId}` }, // Deterministic ID
+            taskId: { S: taskId },
+            action: { S: 'TASK_ASSIGNED' },
+            assigneeId: { S: assigneeId },
+            assigneeEmail: { S: userEmail },
+            timestamp: { S: timestamp }
+          },
+          ConditionExpression: 'attribute_not_exists(logId)' // Fail silently if already exists
+        }));
+      } catch (condErr) {
+        if (condErr.name === 'ConditionalCheckFailedException') {
+          console.log(`ℹ️ Audit log for ${taskId} already exists — skipping duplicate.`);
+        } else {
+          throw condErr; // Re-throw real errors
         }
-      }));
+      }
 
       // 3. Send Targeted Email
       await sns.send(new PublishCommand({
