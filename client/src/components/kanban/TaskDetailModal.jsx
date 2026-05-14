@@ -22,6 +22,8 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
   const [newComment, setNewComment] = useState('');
   const [taskToDelete, setTaskToDelete] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentContent, setEditingCommentContent] = useState('');
 
   // Fetch Comments
   const { data: commentsData, isLoading: loadingComments } = useQuery({
@@ -57,6 +59,16 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
       queryClient.invalidateQueries({ queryKey: ['comments', task.taskId] });
       setNewComment('');
     }
+  });
+  
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, content }) => api.updateComment(token, commentId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', task.taskId] });
+      setEditingCommentId(null);
+      setEditingCommentContent('');
+    },
+    onError: (err) => alert(`Failed to update comment: ${err.message}`)
   });
 
   const deleteCommentMutation = useMutation({
@@ -215,16 +227,54 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                             <span className="font-semibold text-sm text-gray-200">{comment.authorName || 'Unknown'}</span>
                             <span className="text-xs text-gray-500">{safeFormat(comment.createdAt)}</span>
                           </div>
-                          {(user?.userId === comment.authorId || user?.role === 'manager') && (
-                            <button 
-                              onClick={() => setCommentToDelete(comment.commentId)}
-                              className="text-xs text-red-400/50 hover:text-red-400 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          )}
+                          <div className="flex gap-2">
+                            {user?.userId === comment.authorId && (
+                              <button 
+                                onClick={() => {
+                                  setEditingCommentId(comment.commentId);
+                                  setEditingCommentContent(comment.content);
+                                }}
+                                className="text-xs text-blue-400/50 hover:text-blue-400 transition-colors"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {(user?.userId === comment.authorId || user?.role === 'manager') && (
+                              <button 
+                                onClick={() => setCommentToDelete(comment.commentId)}
+                                className="text-xs text-red-400/50 hover:text-red-400 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</p>
+                        {editingCommentId === comment.commentId ? (
+                          <div className="mt-2">
+                            <textarea
+                              value={editingCommentContent}
+                              onChange={(e) => setEditingCommentContent(e.target.value)}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none h-20"
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button 
+                                onClick={() => updateCommentMutation.mutate({ commentId: comment.commentId, content: editingCommentContent })}
+                                disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}
+                                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+                              </button>
+                              <button 
+                                onClick={() => setEditingCommentId(null)}
+                                className="px-3 py-1 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg transition-colors border border-white/10"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</p>
+                        )}
                       </div>
                     </div>
                   );

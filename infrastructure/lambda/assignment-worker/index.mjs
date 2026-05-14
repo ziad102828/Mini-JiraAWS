@@ -18,14 +18,14 @@ export const handler = async (event) => {
     try {
       const snsMessage = JSON.parse(record.body);
       let taskData;
-      
+
       try {
         taskData = typeof snsMessage.Message === 'string' ? JSON.parse(snsMessage.Message) : snsMessage.Message;
       } catch (e) {
         console.warn('⚠️ SNS Message was not JSON. Skipping structured processing.');
-        continue; 
+        continue;
       }
-      
+
       const { taskId, title, assigneeId, projectId, status } = taskData;
       console.log(`Processing assignment: Task ${taskId}`);
 

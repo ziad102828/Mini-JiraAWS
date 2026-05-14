@@ -53,6 +53,12 @@ export const api = {
       body: JSON.stringify({ taskId, content }) 
     }, token),
 
+  updateComment: (token, commentId, content) =>
+    request(`/api/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content })
+    }, token),
+
   deleteComment: (token, taskId, commentId) =>
     request(`/api/comments/${commentId}?taskId=${taskId}`, { method: 'DELETE' }, token),
   

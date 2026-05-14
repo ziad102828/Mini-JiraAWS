@@ -1,4 +1,4 @@
-import { PutCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, DeleteCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAMES } from '../config/dynamodb.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -79,4 +79,28 @@ export async function deleteComment(commentId) {
       },
     })
   );
+}
+
+export async function updateComment(commentId, content) {
+  // First get the comment to find its taskId (the Sort Key)
+  const comment = await getCommentById(commentId);
+  if (!comment) throw new Error('Comment not found');
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAMES.COMMENTS,
+      Key: { 
+        commentId: comment.commentId,
+        taskId: comment.taskId
+      },
+      UpdateExpression: 'SET content = :content, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':content': content,
+        ':updatedAt': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    })
+  );
+
+  return result.Attributes;
 }

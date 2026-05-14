@@ -67,4 +67,31 @@ router.delete('/:commentId', async (req, res, next) => {
   }
 });
 
+/**
+ * PUT /api/comments/:commentId
+ * Update a comment. Only the author can update.
+ */
+router.put('/:commentId', async (req, res, next) => {
+  try {
+    const { content } = req.body;
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const comment = await commentService.getCommentById(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.authorId !== req.user.userId) {
+      return res.status(403).json({ error: 'You can only edit your own comments' });
+    }
+
+    const updatedComment = await commentService.updateComment(req.params.commentId, content);
+    res.json({ comment: updatedComment });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
