@@ -27,11 +27,11 @@ export const handler = async (event) => {
         // Server-side filter: only fetch non-DONE tasks due today or earlier.
         // NOTE: FilterExpression does NOT reduce the 1MB scan limit —
         // it filters AFTER reading. We still need the pagination loop.
-        FilterExpression: 'dueDate <= :today AND #s <> :done',
+        FilterExpression: 'deadline <= :today AND #s <> :done',
         ExpressionAttributeNames: { '#s': 'status' },
         ExpressionAttributeValues: {
           ':today': { S: today },
-          ':done': { S: 'DONE' },
+          ':done': { S: 'done' },
         },
         ExclusiveStartKey: lastKey,
       }));

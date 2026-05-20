@@ -14,7 +14,8 @@ export default function CreateTaskModal({ isOpen, onClose }) {
     description: '',
     priority: 'medium',
     teamId: '',
-    assigneeId: '',     // ← was incorrectly named 'assignedTo' before
+    assigneeId: '',
+    projectId: '',
     deadline: ''
   });
   const [imageFile, setImageFile] = useState(null);
@@ -35,8 +36,15 @@ export default function CreateTaskModal({ isOpen, onClose }) {
     enabled: isOpen && !!token
   });
 
+  // Fetch projects for the dropdown
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.getProjects(token),
+    enabled: isOpen && !!token
+  });
+
   const reset = () => {
-    setFormData({ title: '', description: '', priority: 'medium', teamId: '', assigneeId: '', deadline: '' });
+    setFormData({ title: '', description: '', priority: 'medium', teamId: '', assigneeId: '', projectId: '', deadline: '' });
     setImageFile(null);
     setImagePreview(null);
     setUploadProgress('');
@@ -125,10 +133,27 @@ export default function CreateTaskModal({ isOpen, onClose }) {
             />
           </div>
 
+          {/* Project */}
+          <div>
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Project *</label>
+            <select
+              required
+              className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none"
+              value={formData.projectId}
+              onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+            >
+              <option value="">Select Project</option>
+              {projectsData?.projects?.map(project => (
+                <option key={project.projectId} value={project.projectId}>{project.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Description</label>
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Description *</label>
             <textarea
+              required
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 h-20 resize-none"
               placeholder="Add more details…"
               value={formData.description}
@@ -139,8 +164,9 @@ export default function CreateTaskModal({ isOpen, onClose }) {
           {/* Priority + Deadline */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Priority</label>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Priority *</label>
               <select
+                required
                 className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none"
                 value={formData.priority}
                 onChange={e => setFormData({ ...formData, priority: e.target.value })}
@@ -152,8 +178,9 @@ export default function CreateTaskModal({ isOpen, onClose }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Deadline</label>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Deadline *</label>
               <input
+                required
                 type="date"
                 className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none"
                 value={formData.deadline}
@@ -179,13 +206,14 @@ export default function CreateTaskModal({ isOpen, onClose }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Assignee</label>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Assignee *</label>
               <select
+                required
                 className="w-full bg-[#0a0a0e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none"
                 value={formData.assigneeId}
                 onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
               >
-                <option value="">Unassigned</option>
+                <option value="">Select Assignee</option>
                 {filteredUsers.map(u => (
                   <option key={u.userId} value={u.userId}>{u.name}</option>
                 ))}

@@ -135,6 +135,11 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
                 <span className="px-2.5 py-1 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400">
                   Team: {task.teamId}
                 </span>
+                {task.projectId && (
+                  <span className="px-2.5 py-1 rounded-md bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                    Project: {task.projectId}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex gap-2">

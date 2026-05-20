@@ -61,7 +61,20 @@ export default function TasksPage() {
     enabled: !!token && !!user
   });
 
-  const tasks = tasksData?.tasks || [];
+  const rawTasks = tasksData?.tasks || [];
+
+  // Normalize statuses so tasks created via API tests with non-standard casing (e.g. 'To Do') don't disappear
+  const tasks = rawTasks.map(t => {
+    let norm = 'todo';
+    if (t.status) {
+      const lowered = t.status.toLowerCase().replace(/_/g, ' ');
+      if (lowered === 'to do' || lowered === 'todo') norm = 'todo';
+      else if (lowered === 'in progress') norm = 'in_progress';
+      else if (lowered === 'in review') norm = 'in_review';
+      else if (lowered === 'done') norm = 'done';
+    }
+    return { ...t, normalizedStatus: norm };
+  });
 
   // Update Task Mutation
   const updateMutation = useMutation({
@@ -168,7 +181,7 @@ export default function TasksPage() {
                 key={col.id}
                 id={col.id}
                 title={col.title}
-                tasks={tasks.filter(t => t.status === col.id)}
+                tasks={tasks.filter(t => t.normalizedStatus === col.id)}
                 onCardClick={handleCardClick}
               />
             ))}

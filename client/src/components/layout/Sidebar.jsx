@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  LayoutDashboard, CheckSquare, Users, FolderKanban, LogOut, ChevronLeft, ChevronRight, Sparkles
+  LayoutDashboard, CheckSquare, Users, FolderKanban, LogOut, ChevronLeft, ChevronRight, Sparkles, PieChart
 } from 'lucide-react';
 
 const APP_NAME = 'A7SAN MN JIRA';
@@ -15,6 +15,7 @@ export default function Sidebar() {
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'My Tasks',  icon: CheckSquare,    path: '/tasks'     },
+    { name: 'Analytics', icon: PieChart,       path: '/analytics' },
   ];
   if (user?.role === 'manager') {
     navItems.push(

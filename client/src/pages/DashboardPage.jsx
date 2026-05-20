@@ -41,7 +41,8 @@ export default function DashboardPage() {
   const { data: tasksData } = useQuery({
     queryKey: ['tasks', user?.teamId],
     queryFn: () => api.getTasks(token, user?.role === 'manager' ? null : user?.teamId),
-    enabled: !!token && !!user
+    enabled: !!token && !!user,
+    refetchInterval: 5000 // Automatically refresh every 5 seconds
   });
 
   const tasks = tasksData?.tasks || [];

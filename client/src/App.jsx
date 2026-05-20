@@ -8,6 +8,8 @@ import TasksPage from './pages/TasksPage';
 import TeamsPage from './pages/TeamsPage';
 import ProjectsPage from './pages/ProjectsPage';
 
+import AnalyticsPage from './pages/AnalyticsPage';
+
 // Configure TanStack Query
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,6 +108,10 @@ function App() {
                 <ProtectedRoute><TasksPage /></ProtectedRoute>
               } />
 
+              <Route path="/analytics" element={
+                <ProtectedRoute><AnalyticsPage /></ProtectedRoute>
+              } />
+
               <Route path="/teams" element={
                 <ManagerRoute><TeamsPage /></ManagerRoute>
               } />
@@ -114,13 +120,20 @@ function App() {
                 <ProtectedRoute><ProjectsPage /></ProtectedRoute>
               } />
 
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<RootRoute />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
+}
+
+// Dynamic Root Route Wrapper
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 }
 
 export default App;
