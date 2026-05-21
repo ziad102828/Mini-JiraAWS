@@ -4,6 +4,7 @@ import { enforceTeamIsolation, validateTaskAccess } from '../middleware/teamIsol
 import * as taskService from '../services/taskService.js';
 import * as auditService from '../services/auditService.js';
 import * as notificationService from '../services/notificationService.js';
+import { publishTaskCreated, publishTaskClosed } from '../services/cloudwatchService.js';
 
 const router = Router();
 
@@ -106,6 +107,9 @@ router.post('/', requireRole('manager', 'admin'), async (req, res, next) => {
       await notificationService.publishTaskAssignment(task);
     }
 
+    // CloudWatch: track task creation per team
+    publishTaskCreated(task.teamId);
+
     res.status(201).json({ task });
   } catch (err) {
     next(err);
@@ -145,6 +149,15 @@ router.put('/:taskId', enforceTeamIsolation, async (req, res, next) => {
             fromStatus: existingTask.status,
             toStatus: req.body.status,
           });
+
+          // CloudWatch: track task completion and time-to-close
+          if (req.body.status === 'done') {
+            const createdAt = existingTask.createdAt ? new Date(existingTask.createdAt) : null;
+            const timeToCloseHours = createdAt
+              ? Math.max(0, (Date.now() - createdAt.getTime()) / (1000 * 60 * 60))
+              : 0;
+            publishTaskClosed(existingTask.teamId, timeToCloseHours);
+          }
         }
 
         res.json({ task: updatedTask });

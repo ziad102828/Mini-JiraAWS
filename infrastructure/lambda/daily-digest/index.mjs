@@ -1,8 +1,10 @@
 import { DynamoDBClient, ScanCommand, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
 
 const ddb = new DynamoDBClient({ region: 'eu-north-1' });
 const sns = new SNSClient({ region: 'eu-north-1' });
+const cw = new CloudWatchClient({ region: 'eu-north-1' });
 
 const TASKS_TABLE = process.env.TASKS_TABLE;
 const USERS_TABLE = process.env.USERS_TABLE;
@@ -78,6 +80,22 @@ export const handler = async (event) => {
     }
 
     console.log('✅ All digests sent successfully');
+
+    // CloudWatch: Publish OverdueTasksCount metric for alarming
+    try {
+      await cw.send(new PutMetricDataCommand({
+        Namespace: 'MiniJira/Analytics',
+        MetricData: [{
+          MetricName: 'OverdueTasksCount',
+          Value: allTasks.length,
+          Unit: 'Count',
+          Dimensions: [{ Name: 'Environment', Value: 'production' }],
+        }],
+      }));
+      console.log(`📊 CloudWatch OverdueTasksCount published: ${allTasks.length}`);
+    } catch (cwErr) {
+      console.error('⚠️ CloudWatch metric failed (non-fatal):', cwErr.message);
+    }
   } catch (err) {
     console.error('❌ Error generating digest:', err);
   }
