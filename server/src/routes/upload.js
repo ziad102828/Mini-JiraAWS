@@ -73,7 +73,7 @@ router.get('/view-url/:key(*)', async (req, res, next) => {
     const { GetObjectCommand } = await import('@aws-sdk/client-s3');
     const key = req.params.key;
     const command = new GetObjectCommand({
-      Bucket: S3_BUCKETS.ORIGINALS,
+      Bucket: S3_BUCKETS.RESIZED,
       Key: key,
     });
     // URL expires in 1 hour — long enough for a browser session
