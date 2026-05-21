@@ -77,15 +77,21 @@ export const handler = async (event) => {
       }));
 
       // 4. CloudWatch Metric
-      await cw.send(new PutMetricDataCommand({
-        Namespace: 'MiniJira/Analytics',
-        MetricData: [{
-          MetricName: 'AssignmentsProcessed',
-          Value: 1,
-          Unit: 'Count',
-          Dimensions: [{ Name: 'ProjectID', Value: projectId }]
-        }]
-      }));
+      try {
+        const dimensionValue = (projectId && String(projectId).trim()) || 'unknown';
+        await cw.send(new PutMetricDataCommand({
+          Namespace: 'MiniJira/Analytics',
+          MetricData: [{
+            MetricName: 'AssignmentsProcessed',
+            Value: 1,
+            Unit: 'Count',
+            Dimensions: [{ Name: 'ProjectID', Value: dimensionValue }]
+          }]
+        }));
+        console.log(`📊 CloudWatch metric published for project: ${dimensionValue}`);
+      } catch (cwErr) {
+        console.error('❌ CloudWatch PutMetricData failed:', cwErr.message, JSON.stringify(cwErr));
+      }
 
       console.log('✅ Successfully processed assignment');
     } catch (err) {
