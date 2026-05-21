@@ -36,7 +36,7 @@ export default function TaskDetailModal({ isOpen, onClose, task }) {
   const { data: imageUrl } = useQuery({
     queryKey: ['taskImage', task?.imageKey],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/upload/view-url/${encodeURIComponent(task.imageKey)}`, {
+      const res = await fetch(`/api/upload/view-url/${encodeURIComponent(task.imageKey)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to load image');
