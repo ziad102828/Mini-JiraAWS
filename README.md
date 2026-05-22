@@ -255,7 +255,7 @@ const taskData = JSON.parse(snsMessage.Message); // SNS message = actual task da
 
 ## 🎥 Demo Video
 
-[**Watch Full Demo**](YOUR-YOUTUBE-LINK-HERE) *(Add after recording)*
+[**Watch Full Demo**](https://youtu.be/T-qR7sVdsVs?si=p9RfMXl9QiCiS-Si) 
 
 **Demo covers:**
 1. Architecture diagram walkthrough
