@@ -272,7 +272,7 @@ const taskData = JSON.parse(snsMessage.Message); // SNS message = actual task da
 
 - **GitHub Repository:** https://github.com/ziad102828/Mini-JiraAWS
 - **Live Application:** https://d9lm1us8lvrs3.cloudfront.net
-- **Demo Video:** *(add YouTube link)*
+- **Demo Video:** https://youtu.be/T-qR7sVdsVs?si=p9RfMXl9QiCiS-Si
 - **AWS Region:** eu-north-1 (Stockholm)
 
 ---
