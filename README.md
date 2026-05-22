@@ -1,4 +1,4 @@
-# Mini-Jira on AWS — Team Anti-Gravity
+# Mini-Jira on AWS — Team Cloudy With Chance of Meatballs
 
 > **Live Demo:** https://d9lm1us8lvrs3.cloudfront.net
 > **GitHub Repo:** https://github.com/ziad102828/Mini-JiraAWS
